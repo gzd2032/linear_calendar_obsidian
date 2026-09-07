@@ -1,0 +1,11 @@
+node_modules
+coverage
+html
+*.log
+.DS_Store
+*.map
+data.json
+.DS_Store
+.vscode
+.idea
+preview/preview.js
