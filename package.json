@@ -1,0 +1,25 @@
+{
+	"name": "linear-year-calendar",
+	"version": "1.0.0",
+	"description": "Birdseye-style linear year planner for Obsidian",
+	"main": "main.js",
+	"type": "module",
+	"scripts": {
+		"dev": "node esbuild.config.mjs",
+		"build": "tsc --noEmit --skipLibCheck && node esbuild.config.mjs production",
+		"preview": "node esbuild.config.mjs preview",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"test:coverage": "vitest run --coverage"
+	},
+	"keywords": ["obsidian", "calendar", "linear", "year"],
+	"license": "MIT",
+	"devDependencies": {
+		"@types/node": "^22.15.17",
+		"@vitest/coverage-v8": "^3.2.4",
+		"esbuild": "0.25.5",
+		"obsidian": "latest",
+		"typescript": "^5.8.3",
+		"vitest": "^3.2.4"
+	}
+}
