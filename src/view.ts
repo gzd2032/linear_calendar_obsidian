@@ -1,12 +1,13 @@
 import { ItemView, Notice, requestUrl, type WorkspaceLeaf } from "obsidian";
 import { colorForName, parseISODate } from "./grid";
-import { parseIcs } from "./ics";
+import { parseIcs, normalizeIcsUrl } from "./ics";
 import type LinearYearCalendarPlugin from "./main";
 import { EventCreateModal } from "./modal";
 import { createEventNote, listEventNotes, upsertIcsNotes } from "./notes";
 import { EventDetailPopover } from "./popover";
 import type { CalendarEvent, ViewMode } from "./types";
-import { defaultTodayIso, renderCalendar } from "./ui";
+import { defaultTodayIso, renderCalendar, teardownCalendarUi } from "./ui";
+import { uniqueCalendars } from "./ui-helpers";
 
 export const VIEW_TYPE = "linear-year-calendar";
 
@@ -18,6 +19,7 @@ export class YearCalendarView extends ItemView {
 	private todayIso = defaultTodayIso();
 	private popover: EventDetailPopover | null = null;
 	private scrollToToday = true;
+	private closed = false;
 
 	constructor(leaf: WorkspaceLeaf, plugin: LinearYearCalendarPlugin) {
 		super(leaf);
@@ -38,7 +40,12 @@ export class YearCalendarView extends ItemView {
 	}
 
 	async onOpen(): Promise<void> {
-		this.popover = new EventDetailPopover(this.app, () => this.render());
+		this.closed = false;
+		this.popover = new EventDetailPopover(this.app, () => this.render(), () => {
+			const names = uniqueCalendars(listEventNotes(this.app, this.plugin.settings.eventsFolder));
+			const fallback = this.plugin.settings.defaultCalendar;
+			return names.includes(fallback) ? names : [fallback, ...names];
+		});
 		this.registerEvent(this.app.vault.on("create", () => this.scheduleRender()));
 		this.registerEvent(this.app.vault.on("modify", () => this.scheduleRender()));
 		this.registerEvent(this.app.vault.on("delete", () => this.scheduleRender()));
@@ -51,10 +58,16 @@ export class YearCalendarView extends ItemView {
 
 	private scheduleRender(): void {
 		window.clearTimeout(this.renderTimer);
-		this.renderTimer = window.setTimeout(() => this.render(), 80);
+		this.renderTimer = window.setTimeout(() => {
+			if (this.closed) return;
+			this.render();
+		}, 80);
 	}
 
 	async onClose(): Promise<void> {
+		this.closed = true;
+		window.clearTimeout(this.renderTimer);
+		teardownCalendarUi(this.contentEl);
 		this.popover?.close();
 		this.contentEl.empty();
 	}
@@ -179,9 +192,10 @@ export class YearCalendarView extends ItemView {
 			return;
 		}
 		let total = 0;
+		let trashed = 0;
 		for (const source of sources) {
 			try {
-				const res = await requestUrl({ url: source.url });
+				const res = await requestUrl({ url: normalizeIcsUrl(source.url) });
 				const parsed = parseIcs(
 					res.text,
 					source.name,
@@ -190,19 +204,23 @@ export class YearCalendarView extends ItemView {
 					this.year,
 					this.plugin.settings.importAllDayOnly,
 				);
-				total += await upsertIcsNotes(
+				const result = await upsertIcsNotes(
 					this.app,
 					this.plugin.settings.eventsFolder,
 					source.name,
 					source.color,
 					parsed,
+					this.year,
 				);
+				total += result.written;
+				trashed += result.trashed;
 			} catch (error) {
 				console.error(error);
 				new Notice(`Could not import ${source.name}. Check the ICS URL.`);
 			}
 		}
-		new Notice(`Imported ${total} event notes.`);
+		const extra = trashed > 0 ? `, removed ${trashed} stale` : "";
+		new Notice(`Imported ${total} event notes${extra}.`);
 		this.render();
 	}
 }

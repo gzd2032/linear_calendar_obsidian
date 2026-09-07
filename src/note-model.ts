@@ -66,3 +66,20 @@ export function eventFromFrontmatter(input: {
 		icsUid: typeof fm["ics-uid"] === "string" ? fm["ics-uid"] : undefined,
 	};
 }
+
+/** ICS notes in `year` that are no longer in the latest feed for that year. */
+export function staleIcsNotes(
+	existing: CalendarEvent[],
+	incoming: CalendarEvent[],
+	year: number,
+): CalendarEvent[] {
+	const incomingKeys = new Set(
+		incoming.filter((event) => event.icsUid).map((event) => `${event.icsUid}:${event.start}`),
+	);
+	const prefix = `${year}-`;
+	return existing.filter((event) => {
+		if (!event.icsUid || !event.path) return false;
+		if (!event.start.startsWith(prefix)) return false;
+		return !incomingKeys.has(`${event.icsUid}:${event.start}`);
+	});
+}

@@ -4,6 +4,7 @@ import {
 	buildNoteBody,
 	eventFromFrontmatter,
 	extractNoteDescription,
+	staleIcsNotes,
 	toIsoDate,
 } from "./note-model";
 import type { CalendarEvent } from "./types";
@@ -76,7 +77,8 @@ export async function upsertIcsNotes(
 	calendar: string,
 	color: string,
 	incoming: CalendarEvent[],
-): Promise<number> {
+	year: number,
+): Promise<{ written: number; trashed: number }> {
 	const dest = normalizePath(`${folder}/${sanitizeFilename(calendar)}`);
 	await ensureFolder(app, dest);
 	const existing = listEventNotes(app, dest);
@@ -102,5 +104,14 @@ export async function upsertIcsNotes(
 		await createEventNote(app, dest, payload);
 		written += 1;
 	}
-	return written;
+	let trashed = 0;
+	for (const event of staleIcsNotes(existing, incoming, year)) {
+		if (!event.path) continue;
+		const file = app.vault.getAbstractFileByPath(event.path);
+		if (file instanceof TFile) {
+			await app.fileManager.trashFile(file);
+			trashed += 1;
+		}
+	}
+	return { written, trashed };
 }

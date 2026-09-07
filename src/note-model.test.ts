@@ -3,6 +3,7 @@ import {
 	buildNoteBody,
 	eventFromFrontmatter,
 	extractNoteDescription,
+	staleIcsNotes,
 	toIsoDate,
 } from "./note-model";
 import { formatSelectionPreview } from "./drag";
@@ -51,6 +52,64 @@ More`;
 		expect(event?.end).toBe("2026-09-10");
 		expect(event?.title).toBe("Note");
 		expect(eventFromFrontmatter({ path: "x", basename: "x", frontmatter: {} })).toBeNull();
+	});
+
+	it("finds stale ICS notes in the import year only", () => {
+		const existing = [
+			{
+				id: "a",
+				title: "Gone",
+				start: "2026-03-01",
+				end: "2026-03-01",
+				color: "#fff",
+				calendar: "Work",
+				path: "Calendar/Work/gone.md",
+				icsUid: "gone@example.com",
+			},
+			{
+				id: "b",
+				title: "Kept",
+				start: "2026-04-01",
+				end: "2026-04-01",
+				color: "#fff",
+				calendar: "Work",
+				path: "Calendar/Work/kept.md",
+				icsUid: "kept@example.com",
+			},
+			{
+				id: "c",
+				title: "Next year",
+				start: "2027-01-01",
+				end: "2027-01-01",
+				color: "#fff",
+				calendar: "Work",
+				path: "Calendar/Work/next.md",
+				icsUid: "next@example.com",
+			},
+			{
+				id: "d",
+				title: "Manual",
+				start: "2026-05-01",
+				end: "2026-05-01",
+				color: "#fff",
+				calendar: "Work",
+				path: "Calendar/Work/manual.md",
+			},
+		];
+		const incoming = [
+			{
+				id: "b",
+				title: "Kept",
+				start: "2026-04-01",
+				end: "2026-04-01",
+				color: "#fff",
+				calendar: "Work",
+				icsUid: "kept@example.com",
+			},
+		];
+		expect(staleIcsNotes(existing, incoming, 2026).map((event) => event.path)).toEqual([
+			"Calendar/Work/gone.md",
+		]);
 	});
 });
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseIcs } from "./ics";
+import { parseIcs, normalizeIcsUrl } from "./ics";
 
 const sample = `BEGIN:VCALENDAR
 BEGIN:VEVENT
@@ -53,5 +53,25 @@ DTEND;VALUE=DATE:20260302
 END:VEVENT`;
 		const [event] = parseIcs(ics, "P", "#000", 2026, 2026, true);
 		expect(event?.title).toContain("Hello, world");
+	});
+
+	it("expands weekly BYDAY and skips EXDATE", () => {
+		const ics = `BEGIN:VEVENT
+UID:byday@example.com
+SUMMARY:Sync
+DTSTART;VALUE=DATE:20260105
+DTEND;VALUE=DATE:20260106
+RRULE:FREQ=WEEKLY;BYDAY=MO,WE;COUNT=4
+EXDATE;VALUE=DATE:20260107
+END:VEVENT`;
+		const events = parseIcs(ics, "Work", "#abc", 2026, 2026, true);
+		expect(events.map((e) => e.start)).toEqual(["2026-01-05", "2026-01-12", "2026-01-14"]);
+	});
+});
+
+describe("normalizeIcsUrl", () => {
+	it("rewrites webcal to https", () => {
+		expect(normalizeIcsUrl("webcal://example.com/cal.ics")).toBe("https://example.com/cal.ics");
+		expect(normalizeIcsUrl(" https://example.com/cal.ics ")).toBe("https://example.com/cal.ics");
 	});
 });

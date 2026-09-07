@@ -1,4 +1,5 @@
 import { type App, PluginSettingTab, Setting } from "obsidian";
+import { normalizeIcsUrl } from "./ics";
 import type LinearYearCalendarPlugin from "./main";
 import { PASTEL_COLORS, type IcsSource, type PluginSettings, type ViewMode } from "./types";
 
@@ -129,7 +130,9 @@ export class LinearYearCalendarSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl).setName("ICS URL").addText((text) => {
 			text.setPlaceholder("https://calendar.google.com/calendar/ical/…").setValue(source.url).onChange(async (value) => {
-				source.url = value.trim();
+				const next = normalizeIcsUrl(value);
+				source.url = next;
+				if (next !== value) text.setValue(next);
 				await this.plugin.saveSettings();
 			});
 			text.inputEl.style.width = "100%";
