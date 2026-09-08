@@ -1,5 +1,14 @@
-import { type App, TFile, normalizePath } from "obsidian";
-import { googleCalendarFolder, localCalendarFolder, sanitizeCalendarName } from "./calendar-paths";
+import { type App, TFile, TFolder, normalizePath } from "obsidian";
+import {
+	GOOGLE_FOLDER,
+	googleCalendarFolder,
+	localCalendarFolder,
+	localCalendarNames,
+	mergeLocalCalendarNames,
+	notePathInFolder,
+	sanitizeCalendarName,
+	uniqueNotePath,
+} from "./calendar-paths";
 import { sanitizeFilename } from "./format";
 import {
 	buildNoteBody,
@@ -17,8 +26,11 @@ export {
 	isGoogleEvent,
 	localCalendarFolder,
 	localCalendarNames,
+	mergeLocalCalendarNames,
+	notePathInFolder,
 	partitionCalendars,
 	sanitizeCalendarName,
+	uniqueNotePath,
 } from "./calendar-paths";
 
 export function listEventNotes(app: App, folder: string): CalendarEvent[] {
@@ -38,6 +50,32 @@ export function listEventNotes(app: App, folder: string): CalendarEvent[] {
 		if (event) events.push(event);
 	}
 	return events;
+}
+
+/** Immediate child folders of the events root, excluding `google/`. */
+export function listLocalCalendarFolderNames(app: App, eventsFolder: string): string[] {
+	const root = app.vault.getAbstractFileByPath(normalizePath(eventsFolder));
+	if (!(root instanceof TFolder)) return [];
+	const names: string[] = [];
+	for (const child of root.children) {
+		if (!(child instanceof TFolder)) continue;
+		if (child.name.toLowerCase() === GOOGLE_FOLDER) continue;
+		names.push(child.name);
+	}
+	return names;
+}
+
+/** Local calendars for the create/edit picker: default, notes, and folders. */
+export function localCalendarsForPicker(
+	app: App,
+	events: CalendarEvent[],
+	eventsFolder: string,
+	defaultCalendar: string,
+): string[] {
+	return mergeLocalCalendarNames(
+		localCalendarNames(events, eventsFolder, defaultCalendar),
+		listLocalCalendarFolderNames(app, eventsFolder),
+	);
 }
 
 export async function ensureFolder(app: App, folder: string): Promise<void> {
@@ -70,12 +108,7 @@ export async function createEventNote(
 	await ensureFolder(app, folder);
 	const payload = { ...event, calendar };
 	const base = normalizePath(`${folder}/${event.start} ${sanitizeFilename(event.title)}`);
-	let path = `${base}.md`;
-	let n = 2;
-	while (app.vault.getAbstractFileByPath(path)) {
-		path = `${base} ${n}.md`;
-		n += 1;
-	}
+	const path = uniqueNotePath(`${base}.md`, (candidate) => !!app.vault.getAbstractFileByPath(candidate));
 	return app.vault.create(path, buildNoteBody(payload));
 }
 
@@ -87,12 +120,7 @@ export async function createEventNoteInFolder(
 ): Promise<TFile> {
 	await ensureFolder(app, folder);
 	const base = normalizePath(`${folder}/${event.start} ${sanitizeFilename(event.title)}`);
-	let path = `${base}.md`;
-	let n = 2;
-	while (app.vault.getAbstractFileByPath(path)) {
-		path = `${base} ${n}.md`;
-		n += 1;
-	}
+	const path = uniqueNotePath(`${base}.md`, (candidate) => !!app.vault.getAbstractFileByPath(candidate));
 	return app.vault.create(path, buildNoteBody(event));
 }
 
@@ -100,10 +128,22 @@ export async function updateEventNote(
 	app: App,
 	path: string,
 	event: Omit<CalendarEvent, "id" | "path">,
-): Promise<void> {
+	eventsFolder: string,
+): Promise<string> {
 	const file = app.vault.getAbstractFileByPath(path);
 	if (!(file instanceof TFile)) throw new Error(`Missing note: ${path}`);
-	await app.vault.modify(file, buildNoteBody(event));
+	const calendar = sanitizeCalendarName(event.calendar);
+	const payload = { ...event, calendar };
+	await app.vault.modify(file, buildNoteBody(payload));
+	const destFolder = localCalendarFolder(eventsFolder, calendar);
+	const currentFolder = normalizePath(file.parent?.path ?? "");
+	if (currentFolder === normalizePath(destFolder)) return file.path;
+	await ensureFolder(app, destFolder);
+	const dest = uniqueNotePath(notePathInFolder(file.path, destFolder), (candidate) =>
+		candidate !== file.path && Boolean(app.vault.getAbstractFileByPath(candidate)),
+	);
+	await app.fileManager.renameFile(file, dest);
+	return dest;
 }
 
 export async function upsertIcsNotes(

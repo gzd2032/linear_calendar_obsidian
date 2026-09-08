@@ -7,8 +7,11 @@ import {
 	isGooglePath,
 	localCalendarFolder,
 	localCalendarNames,
+	mergeLocalCalendarNames,
+	notePathInFolder,
 	partitionCalendars,
 	sanitizeCalendarName,
+	uniqueNotePath,
 } from "./calendar-paths";
 
 describe("calendar-paths", () => {
@@ -37,6 +40,26 @@ describe("calendar-paths", () => {
 			"https://calendar.google.com/calendar/r/day/2026/9/7",
 		);
 		expect(googleCalendarDayUrl("bad")).toBeNull();
+	});
+
+	it("merges local calendar names and skips blanks", () => {
+		expect(mergeLocalCalendarNames(["Work", ""], ["Personal", "Work"])).toEqual([
+			"Personal",
+			"Work",
+		]);
+	});
+
+	it("places a note in another folder and uniquifies collisions", () => {
+		expect(notePathInFolder("Calendar/Personal/2026-01-01 Trip.md", "Calendar/Work")).toBe(
+			"Calendar/Work/2026-01-01 Trip.md",
+		);
+		const taken = new Set(["Calendar/Work/2026-01-01 Trip.md", "Calendar/Work/2026-01-01 Trip 2.md"]);
+		expect(uniqueNotePath("Calendar/Work/2026-01-01 Trip.md", (path) => taken.has(path))).toBe(
+			"Calendar/Work/2026-01-01 Trip 3.md",
+		);
+		expect(uniqueNotePath("Calendar/Work/fresh.md", (path) => taken.has(path))).toBe(
+			"Calendar/Work/fresh.md",
+		);
 	});
 
 	it("lists local calendars and partitions filters", () => {
