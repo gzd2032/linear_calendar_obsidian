@@ -12,6 +12,7 @@
 	--byc-select: #f3e6d8;
 	--byc-accent: #6b5b95;
 	--byc-shadow: 0 8px 28px rgba(40, 40, 30, 0.12);
+	--byc-event-inset-x: 4px;
 	height: 100%;
 	display: flex;
 	flex-direction: column;
@@ -288,6 +289,7 @@
 	--byc-wide-dayhead: 20px;
 	--byc-wide-lane: 28px;
 	--byc-wide-pad: 4px;
+	--byc-event-inset-x: 6px;
 }
 
 .byc-root.is-wide .byc-table {
@@ -337,7 +339,7 @@
 }
 
 .byc-root.is-wide .byc-event {
-	margin: 2px 1px;
+	margin: 2px var(--byc-event-inset-x);
 	padding: 3px 8px;
 	font-size: 12px;
 	border-radius: 4px;
@@ -385,6 +387,7 @@
 }
 
 .byc-root.is-wide .byc-column-event {
+	margin: 1px 3px 1px 2px;
 	min-height: 24px;
 	font-size: 12px;
 	padding: 3px 6px;
@@ -592,7 +595,7 @@
 
 .byc-event {
 	z-index: 2;
-	margin: 1px 2px;
+	margin: 1px var(--byc-event-inset-x);
 	border-radius: 4px;
 	padding: 2px 6px;
 	font-size: 11px;
@@ -657,7 +660,7 @@
 
 .byc-column-event {
 	z-index: 2;
-	margin: 1px 2px;
+	margin: 1px 3px 1px 2px;
 	min-width: 0;
 	writing-mode: horizontal-tb;
 	align-self: stretch;
