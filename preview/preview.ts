@@ -25,6 +25,8 @@ const events: CalendarEvent[] = [
 		end: "2026-07-21",
 		color: "#C5B3E0",
 		calendar: "Work",
+		path: "Calendar/google/Work/midyear.md",
+		icsUid: "midyear@google.com",
 	},
 	{
 		id: "4",
@@ -117,6 +119,7 @@ const state = {
 	mode: "stacked" as ViewMode,
 	weekStartsOn: 0,
 	events,
+	eventsFolder: "Calendar",
 	hiddenCalendars: new Set<string>(),
 	search: "",
 	todayIso: "2026-09-07",

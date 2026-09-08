@@ -9,6 +9,7 @@ import {
 	segmentsForMonth,
 	weekdayLabel,
 } from "./grid";
+import { partitionCalendars } from "./calendar-paths";
 import type { CalendarEvent, ViewMode, YearGrid } from "./types";
 import {
 	chevronLeft,
@@ -20,7 +21,6 @@ import {
 	padDay,
 	refreshIcon,
 	toggleMenu,
-	uniqueCalendars,
 	viewLabel,
 } from "./ui-helpers";
 
@@ -29,6 +29,7 @@ export interface CalendarUIState {
 	mode: ViewMode;
 	weekStartsOn: number;
 	events: CalendarEvent[];
+	eventsFolder: string;
 	hiddenCalendars: Set<string>;
 	search: string;
 	todayIso: string;
@@ -63,12 +64,19 @@ export function renderCalendar(
 	const query = state.search.trim().toLowerCase();
 	const hiddenCount = state.hiddenCalendars.size;
 	const visibleEvents = filterVisibleEvents(state.events, state.hiddenCalendars, query);
-	const calendars = uniqueCalendars(state.events);
+	const { local, google } = partitionCalendars(state.events, state.eventsFolder);
+	const calendars = [...local, ...google];
 	const grid = buildYearGrid(state.year, state.mode, state.weekStartsOn, state.todayIso);
 	const todayYear = Number(state.todayIso.slice(0, 4));
 	const todayDate = parseISODate(state.todayIso);
 
-	const { displayMenu, filtersMenu } = renderToolbar(root, state, handlers, calendars, hiddenCount);
+	const { displayMenu, filtersMenu } = renderToolbar(
+		root,
+		state,
+		handlers,
+		{ local, google, all: calendars },
+		hiddenCount,
+	);
 
 	const board = mount(root, div("byc-board"));
 	if (visibleEvents.length === 0 && state.events.length > 0 && (hiddenCount > 0 || Boolean(query))) {
@@ -159,7 +167,7 @@ function renderToolbar(
 	root: HTMLElement,
 	state: CalendarUIState,
 	handlers: CalendarUIHandlers,
-	calendars: string[],
+	calendars: { local: string[]; google: string[]; all: string[] },
 	hiddenCount: number,
 ): { displayMenu: HTMLElement; filtersMenu: HTMLElement } {
 	const toolbar = mount(root, div("byc-toolbar"));
@@ -220,11 +228,11 @@ function renderToolbar(
 	}
 
 	const filterWrap = mount(right, div("byc-menu-wrap"));
-	const visibleCount = calendars.filter((name) => !state.hiddenCalendars.has(name)).length;
+	const visibleCount = calendars.all.filter((name) => !state.hiddenCalendars.has(name)).length;
 	const filterLabel =
 		hiddenCount > 0
 			? `Filters · ${hiddenCount} hidden`
-			: `Filters ${visibleCount}/${calendars.length || 0}`;
+			: `Filters ${visibleCount}/${calendars.all.length || 0}`;
 	const filterBtn = mount(
 		filterWrap,
 		el("button", {
@@ -255,15 +263,34 @@ function renderToolbar(
 
 function renderFiltersMenu(
 	filtersMenu: HTMLElement,
-	calendars: string[],
+	calendars: { local: string[]; google: string[]; all: string[] },
 	state: CalendarUIState,
 	handlers: CalendarUIHandlers,
 ): void {
-	if (calendars.length === 0) {
+	if (calendars.all.length === 0) {
 		mount(filtersMenu, div("byc-menu-empty", "No calendars yet"));
 		return;
 	}
-	for (const name of calendars) {
+	renderFilterSection(filtersMenu, "Local", calendars.local, state, handlers);
+	renderFilterSection(filtersMenu, "Google", calendars.google, state, handlers);
+	if (state.hiddenCalendars.size > 0 && handlers.onShowAllCalendars) {
+		mount(
+			filtersMenu,
+			el("button", { cls: "byc-menu-action", type: "button", text: "Show all calendars" }),
+		).addEventListener("click", () => handlers.onShowAllCalendars?.());
+	}
+}
+
+function renderFilterSection(
+	filtersMenu: HTMLElement,
+	label: string,
+	names: string[],
+	state: CalendarUIState,
+	handlers: CalendarUIHandlers,
+): void {
+	if (names.length === 0) return;
+	mount(filtersMenu, div("byc-filter-section", label));
+	for (const name of names) {
 		const row = mount(filtersMenu, el("label", { cls: "byc-filter-row" }));
 		const checkbox = mount(row, el("input", { type: "checkbox" })) as HTMLInputElement;
 		checkbox.checked = !state.hiddenCalendars.has(name);
@@ -272,12 +299,6 @@ function renderFiltersMenu(
 		const swatch = mount(row, el("span", { cls: "byc-swatch" }));
 		swatch.style.background =
 			state.events.find((event) => event.calendar === name)?.color ?? "#A9C7E8";
-	}
-	if (state.hiddenCalendars.size > 0 && handlers.onShowAllCalendars) {
-		mount(
-			filtersMenu,
-			el("button", { cls: "byc-menu-action", type: "button", text: "Show all calendars" }),
-		).addEventListener("click", () => handlers.onShowAllCalendars?.());
 	}
 }
 

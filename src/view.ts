@@ -3,11 +3,16 @@ import { colorForName, parseISODate } from "./grid";
 import { parseIcs, normalizeIcsUrl } from "./ics";
 import type LinearYearCalendarPlugin from "./main";
 import { EventCreateModal } from "./modal";
-import { createEventNote, listEventNotes, upsertIcsNotes } from "./notes";
+import {
+	createEventNote,
+	listEventNotes,
+	localCalendarNames,
+	sanitizeCalendarName,
+	upsertIcsNotes,
+} from "./notes";
 import { EventDetailPopover } from "./popover";
 import type { CalendarEvent, ViewMode } from "./types";
 import { defaultTodayIso, renderCalendar, teardownCalendarUi } from "./ui";
-import { uniqueCalendars } from "./ui-helpers";
 
 export const VIEW_TYPE = "linear-year-calendar";
 
@@ -41,11 +46,17 @@ export class YearCalendarView extends ItemView {
 
 	async onOpen(): Promise<void> {
 		this.closed = false;
-		this.popover = new EventDetailPopover(this.app, () => this.render(), () => {
-			const names = uniqueCalendars(listEventNotes(this.app, this.plugin.settings.eventsFolder));
-			const fallback = this.plugin.settings.defaultCalendar;
-			return names.includes(fallback) ? names : [fallback, ...names];
-		});
+		this.popover = new EventDetailPopover(
+			this.app,
+			() => this.render(),
+			() =>
+				localCalendarNames(
+					listEventNotes(this.app, this.plugin.settings.eventsFolder),
+					this.plugin.settings.eventsFolder,
+					this.plugin.settings.defaultCalendar,
+				),
+			() => this.plugin.settings.eventsFolder,
+		);
 		this.registerEvent(this.app.vault.on("create", () => this.scheduleRender()));
 		this.registerEvent(this.app.vault.on("modify", () => this.scheduleRender()));
 		this.registerEvent(this.app.vault.on("delete", () => this.scheduleRender()));
@@ -84,6 +95,7 @@ export class YearCalendarView extends ItemView {
 				mode: this.mode,
 				weekStartsOn: this.plugin.settings.weekStartsOn,
 				events,
+				eventsFolder: this.plugin.settings.eventsFolder,
 				hiddenCalendars: new Set(this.plugin.settings.hiddenCalendars),
 				search: this.search,
 				todayIso: this.todayIso,
@@ -151,10 +163,11 @@ export class YearCalendarView extends ItemView {
 	}
 
 	private openCreateModal(start: string, end: string, events: CalendarEvent[]): void {
-		const calendars = [...new Set(events.map((event) => event.calendar))];
-		if (!calendars.includes(this.plugin.settings.defaultCalendar)) {
-			calendars.unshift(this.plugin.settings.defaultCalendar);
-		}
+		const calendars = localCalendarNames(
+			events,
+			this.plugin.settings.eventsFolder,
+			this.plugin.settings.defaultCalendar,
+		);
 		new EventCreateModal(
 			this.app,
 			{
@@ -171,12 +184,15 @@ export class YearCalendarView extends ItemView {
 					new Notice("Use YYYY-MM-DD dates.");
 					return;
 				}
+				const calendar = sanitizeCalendarName(
+					draft.calendar || this.plugin.settings.defaultCalendar,
+				);
 				const file = await createEventNote(this.app, this.plugin.settings.eventsFolder, {
 					title: draft.title,
 					start: draft.start,
 					end: draft.end < draft.start ? draft.start : draft.end,
 					color: draft.color,
-					calendar: draft.calendar || this.plugin.settings.defaultCalendar,
+					calendar,
 					description: draft.description,
 				});
 				new Notice(`Created ${file.basename}`);

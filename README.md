@@ -55,7 +55,14 @@ If you rebuild `main.js`, run **Reload app without saving** from the command pal
 
 ## Use it
 
-Events are Markdown notes in a folder (default: `Calendar/`). Create them from the grid, or write them yourself:
+**Google Calendar is the source of truth** for imported events. **Obsidian is for local planning.**
+
+| Kind | Folder | In Obsidian |
+| --- | --- | --- |
+| Local planning | `Calendar/<CalendarName>/` | Create, edit, delete |
+| Google ICS | `Calendar/google/<CalendarName>/` | View only; open the day in Google Calendar |
+
+Click/drag creates notes in the **Default calendar name** folder (settings). You can pick or type other **local** calendar names in the create/edit modal. Filters group **Local** vs **Google**.
 
 ```yaml
 ---
@@ -71,13 +78,14 @@ Optional description lives in the note body.
 
 | Action | What happens |
 | --- | --- |
-| Click a day | Create a one-day event note |
-| Drag across days | Create a multi-day event note (live range preview) |
-| Click an event bar | Detail popover (open note / edit / delete) |
+| Click a day | Create a one-day local event note |
+| Drag across days | Create a multi-day local event note (live range preview) |
+| Click a local event bar | Detail popover (open note / edit / delete) |
+| Click a Google event bar | Read-only popover; **Google** opens that day in Google Calendar |
 | Hover an event bar | Tooltip with title, dates, day count |
 | **Today** (next to year arrows) | Jump to the current year and center on today |
 | Display | Switch Stacked / Linear / Column / Col-Stack |
-| Filters | Show or hide calendars; **Show all** when some are hidden |
+| Filters | Local and Google sections; **Show all** when some are hidden |
 | Search | Filter bars by title |
 | Year arrows | Move year |
 
@@ -93,9 +101,11 @@ Optional description lives in the note body.
 
 **All-day events only** is on by default. Timed meetings are skipped; only Google all-day events are written as notes. Turn that setting off if you also want timed events (they still render as a one-day bar).
 
-Imported events are written as notes under `Calendar/<calendar-name>/`, keyed by `ics-uid` + start date so refreshes update instead of duplicating.
+Imported events are written under `Calendar/google/<calendar-name>/`, keyed by `ics-uid` + start date so refreshes update instead of duplicating. Do not edit those notes in Obsidian — change them in Google and refresh.
 
-Public ICS URLs work too (webcal/https). `webcal://` links should be pasted as `https://`.
+Public ICS URLs work too (webcal/https). `webcal://` is rewritten to `https://` automatically.
+
+If you previously imported into `Calendar/<name>/` (without `google/`), refresh will write to the new path; you can delete the old ICS notes manually.
 
 ---
 
