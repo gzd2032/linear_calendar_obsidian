@@ -31,7 +31,7 @@ export class LinearYearCalendarSettingTab extends PluginSettingTab {
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
-		containerEl.createEl("h2", { text: "Linear Year Calendar" });
+		new Setting(containerEl).setName("Linear Year Calendar").setHeading();
 
 		new Setting(containerEl)
 			.setName("Events folder")
@@ -88,7 +88,7 @@ export class LinearYearCalendarSettingTab extends PluginSettingTab {
 					});
 			});
 
-		containerEl.createEl("h3", { text: "Google Calendar (ICS)" });
+		new Setting(containerEl).setName("Google Calendar (ICS)").setHeading();
 		containerEl.createEl("p", {
 			text: "In Google Calendar: Settings → the calendar → Integrate calendar → Secret address in iCal format. Paste that URL here, then Refresh from the calendar toolbar.",
 		});
@@ -123,7 +123,7 @@ export class LinearYearCalendarSettingTab extends PluginSettingTab {
 	}
 
 	private renderSource(containerEl: HTMLElement, source: IcsSource, index: number): void {
-		containerEl.createEl("h4", { text: source.name || `Calendar ${index + 1}` });
+		new Setting(containerEl).setName(source.name || `Calendar ${index + 1}`).setHeading();
 
 		new Setting(containerEl).setName("Name").addText((text) => {
 			text.setValue(source.name).onChange(async (value) => {
@@ -139,7 +139,7 @@ export class LinearYearCalendarSettingTab extends PluginSettingTab {
 				if (next !== value) text.setValue(next);
 				await this.plugin.saveSettings();
 			});
-			text.inputEl.style.width = "100%";
+			text.inputEl.addClass("byc-ics-url-input");
 		});
 
 		new Setting(containerEl).setName("Color").addColorPicker((picker) => {

@@ -18,7 +18,7 @@
 	flex-direction: column;
 	background: var(--byc-bg);
 	color: var(--byc-text);
-	font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+	font-family: var(--font-interface, var(--font-text, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif));
 	overflow: hidden;
 }
 
@@ -165,7 +165,7 @@
 	display: none;
 }
 
-.byc-mode-option {
+button.byc-mode-option {
 	display: block;
 	width: auto;
 	white-space: nowrap;
@@ -173,8 +173,8 @@
 	border: 0;
 	outline: none;
 	box-shadow: none;
-	background: none !important;
-	background-color: transparent !important;
+	background: transparent;
+	background-color: transparent;
 	border-radius: 0;
 	padding: 6px 10px;
 	cursor: pointer;
@@ -186,19 +186,19 @@
 	appearance: none;
 }
 
-.byc-mode-option:hover,
-.byc-mode-option:focus,
-.byc-mode-option:focus-visible,
-.byc-mode-option:active,
-.byc-mode-option.is-active {
-	background: none !important;
-	background-color: transparent !important;
+button.byc-mode-option:hover,
+button.byc-mode-option:focus,
+button.byc-mode-option:focus-visible,
+button.byc-mode-option:active,
+button.byc-mode-option.is-active {
+	background: transparent;
+	background-color: transparent;
 	box-shadow: none;
 }
 
-.byc-mode-option:hover {
-	background: color-mix(in srgb, #4a7ab5 12%, #fff) !important;
-	background-color: color-mix(in srgb, #4a7ab5 12%, #fff) !important;
+button.byc-mode-option:hover {
+	background: color-mix(in srgb, #4a7ab5 12%, #fff);
+	background-color: color-mix(in srgb, #4a7ab5 12%, #fff);
 	color: #1a3a6b;
 	border-radius: 8px;
 }
@@ -327,7 +327,6 @@
 .byc-root.is-wide .byc-month-body {
 	grid-template-columns: repeat(var(--byc-cols), var(--byc-wide-day));
 	gap: 0;
-	column-gap: 0;
 	justify-content: start;
 	align-content: start;
 	width: max-content;
@@ -738,6 +737,10 @@
 	resize: vertical;
 }
 
+.byc-ics-url-input {
+	width: 100%;
+}
+
 .byc-modal .dropdown {
 	min-width: 12em;
 }
@@ -770,7 +773,7 @@
 	box-shadow: 0 12px 40px rgba(40, 40, 30, 0.18);
 	padding: 14px 14px 12px;
 	color: #2b2b2b;
-	font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+	font-family: var(--font-interface, var(--font-text, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif));
 	opacity: 0;
 	transform: translateY(4px) scale(0.98);
 	transition: opacity 150ms ease, transform 150ms ease;
@@ -829,7 +832,7 @@
 	outline-offset: 2px;
 }
 
-.byc-popover-close {
+button.byc-popover-close {
 	flex-shrink: 0;
 	width: 28px;
 	height: 28px;
@@ -839,7 +842,7 @@
 	border: none;
 	outline: none;
 	box-shadow: none;
-	background: transparent !important;
+	background: transparent;
 	color: #a3a39c;
 	font-size: 22px;
 	line-height: 1;
@@ -850,17 +853,17 @@
 	appearance: none;
 }
 
-.byc-popover-close:hover {
-	background: rgba(0, 0, 0, 0.05) !important;
+button.byc-popover-close:hover {
+	background: rgba(0, 0, 0, 0.05);
 	color: #666;
 	border: none;
 	box-shadow: none;
 }
 
-.byc-popover-close:focus,
-.byc-popover-close:focus-visible,
-.byc-popover-close:active {
-	background: transparent !important;
+button.byc-popover-close:focus,
+button.byc-popover-close:focus-visible,
+button.byc-popover-close:active {
+	background: transparent;
 	border: none;
 	outline: none;
 	box-shadow: none;

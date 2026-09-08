@@ -15,11 +15,10 @@ import {
 	eventFromFrontmatter,
 	extractNoteDescription,
 	staleIcsNotes,
-	toIsoDate,
 } from "./note-model";
 import type { CalendarEvent } from "./types";
 
-export { buildNoteBody, extractNoteDescription, toIsoDate } from "./note-model";
+export { buildNoteBody, extractNoteDescription } from "./note-model";
 export {
 	googleCalendarDayUrl,
 	googleCalendarFolder,
