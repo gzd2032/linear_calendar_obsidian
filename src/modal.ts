@@ -1,4 +1,5 @@
 import { Modal, Setting } from "obsidian";
+import { sanitizeCalendarName } from "./calendar-paths";
 import { PASTEL_COLORS } from "./types";
 
 export interface EventDraft {
@@ -102,7 +103,9 @@ export class EventCreateModal extends Modal {
 				.setCta()
 				.onClick(() => {
 					if (!this.draft.title.trim()) this.draft.title = "Untitled";
-					this.draft.calendar = this.draft.calendar.trim() || calendarNames[0] || "Personal";
+					this.draft.calendar = sanitizeCalendarName(
+						this.draft.calendar.trim() || calendarNames[0] || "Personal",
+					);
 					this.onSubmit(this.draft);
 					this.close();
 				});

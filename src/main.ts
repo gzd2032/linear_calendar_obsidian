@@ -74,6 +74,11 @@ export default class LinearYearCalendarPlugin extends Plugin {
 			this.settings.settingsVersion = 2;
 			await this.saveSettings();
 		}
+		// v3: Google ICS under Calendar/google/; local calendars under Calendar/<Name>/
+		if ((data.settingsVersion ?? 0) < 3) {
+			this.settings.settingsVersion = 3;
+			await this.saveSettings();
+		}
 	}
 
 	async saveSettings(): Promise<void> {

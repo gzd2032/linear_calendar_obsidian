@@ -1,4 +1,5 @@
 import { Notice, TFile, type App } from "obsidian";
+import { googleCalendarDayUrl, isGoogleEvent, sanitizeCalendarName } from "./calendar-paths";
 import { div, el, mount } from "./dom";
 import { eventDayCount, formatShortDate } from "./grid";
 import type { CalendarEvent } from "./types";
@@ -18,7 +19,8 @@ export class EventDetailPopover {
 	constructor(
 		private app: App,
 		private onChanged: () => void,
-		private getCalendars: () => string[] = () => [],
+		private getLocalCalendars: () => string[] = () => [],
+		private getEventsFolder: () => string = () => "Calendar",
 	) {}
 
 	/** True when the popover is showing this event. */
@@ -36,6 +38,7 @@ export class EventDetailPopover {
 		this.openEventId = event.id;
 		this.activeEvent = event;
 		const token = ++this.openToken;
+		const google = isGoogleEvent(event, this.getEventsFolder());
 
 		const pop = mount(document.body, div("byc-popover"));
 		this.root = pop;
@@ -85,36 +88,58 @@ export class EventDetailPopover {
 
 		const days = eventDayCount(event.start, event.end);
 		mount(body, div("byc-popover-days", days === 1 ? "1 day" : `${days} days`));
+		if (google) {
+			mount(body, div("byc-popover-source", "Google Calendar · read-only"));
+		}
 
 		const descEl = mount(body, div("byc-popover-desc"));
 		descEl.hidden = true;
 
 		const footer = mount(pop, div("byc-popover-footer"));
-		const del = mount(
-			footer,
-			el("button", {
-				cls: "byc-popover-delete",
-				type: "button",
-				attr: { "aria-label": "Delete event", title: "Delete event" },
-			}),
-		);
-		del.innerHTML = `${trashIcon()}<span>Delete</span>`;
-		del.addEventListener("click", () => {
-			void this.deleteEvent(event);
-		});
 
-		const edit = mount(
-			footer,
-			el("button", {
-				cls: "byc-popover-edit",
-				type: "button",
-				attr: { "aria-label": "Edit event", title: "Edit event (E)" },
-			}),
-		);
-		edit.innerHTML = `${pencilIcon()}<span>Edit</span>`;
-		edit.addEventListener("click", () => {
-			void this.openEdit(event);
-		});
+		if (google) {
+			const openGoogle = mount(
+				footer,
+				el("button", {
+					cls: "byc-popover-edit",
+					type: "button",
+					attr: {
+						"aria-label": "Open day in Google Calendar",
+						title: "Open day in Google Calendar",
+					},
+				}),
+			);
+			openGoogle.innerHTML = `${externalIcon()}<span>Google</span>`;
+			openGoogle.addEventListener("click", () => {
+				this.openGoogleDay(event);
+			});
+		} else {
+			const del = mount(
+				footer,
+				el("button", {
+					cls: "byc-popover-delete",
+					type: "button",
+					attr: { "aria-label": "Delete event", title: "Delete event" },
+				}),
+			);
+			del.innerHTML = `${trashIcon()}<span>Delete</span>`;
+			del.addEventListener("click", () => {
+				void this.deleteEvent(event);
+			});
+
+			const edit = mount(
+				footer,
+				el("button", {
+					cls: "byc-popover-edit",
+					type: "button",
+					attr: { "aria-label": "Edit event", title: "Edit event (E)" },
+				}),
+			);
+			edit.innerHTML = `${pencilIcon()}<span>Edit</span>`;
+			edit.addEventListener("click", () => {
+				void this.openEdit(event);
+			});
+		}
 
 		this.position(pop, anchor);
 		requestAnimationFrame(() => pop.classList.add("is-open"));
@@ -135,6 +160,7 @@ export class EventDetailPopover {
 				this.close();
 				return;
 			}
+			if (isGoogleEvent(this.activeEvent, this.getEventsFolder())) return;
 			if (ev.key === "e" || ev.key === "E") {
 				ev.preventDefault();
 				void this.openEdit(this.activeEvent);
@@ -187,6 +213,15 @@ export class EventDetailPopover {
 		void this.app.workspace.getLeaf(false).openFile(file);
 	}
 
+	private openGoogleDay(event: CalendarEvent): void {
+		const url = googleCalendarDayUrl(event.start);
+		if (!url) {
+			new Notice("Could not open Google Calendar for this date.");
+			return;
+		}
+		window.open(url, "_blank");
+	}
+
 	private position(pop: HTMLElement, anchor: HTMLElement): void {
 		const rect = anchor.getBoundingClientRect();
 		const popW = 280;
@@ -208,6 +243,7 @@ export class EventDetailPopover {
 	}
 
 	private async openEdit(event: CalendarEvent): Promise<void> {
+		if (isGoogleEvent(event, this.getEventsFolder())) return;
 		this.close();
 		const description = event.path ? await readNoteDescription(this.app, event.path) : "";
 		const calendars = this.calendarsFor(event);
@@ -230,9 +266,8 @@ export class EventDetailPopover {
 						start: draft.start,
 						end: draft.end < draft.start ? draft.start : draft.end,
 						color: draft.color,
-						calendar: draft.calendar || event.calendar,
+						calendar: sanitizeCalendarName(draft.calendar || event.calendar),
 						description: draft.description,
-						icsUid: event.icsUid,
 					});
 					new Notice("Event updated");
 					this.onChanged();
@@ -246,12 +281,13 @@ export class EventDetailPopover {
 	}
 
 	private calendarsFor(event: CalendarEvent): string[] {
-		const names = this.getCalendars();
+		const names = this.getLocalCalendars();
 		if (names.includes(event.calendar)) return names;
-		return [event.calendar, ...names];
+		return [sanitizeCalendarName(event.calendar), ...names];
 	}
 
 	private async deleteEvent(event: CalendarEvent): Promise<void> {
+		if (isGoogleEvent(event, this.getEventsFolder())) return;
 		if (!event.path) return;
 		const file = this.app.vault.getAbstractFileByPath(event.path);
 		if (!(file instanceof TFile)) {
@@ -285,4 +321,8 @@ function trashIcon(): string {
 
 function pencilIcon(): string {
 	return `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`;
+}
+
+function externalIcon(): string {
+	return `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 4h6v6"/><path d="M10 14L20 4"/><path d="M20 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h5"/></svg>`;
 }

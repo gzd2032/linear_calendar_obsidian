@@ -12,7 +12,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	hiddenCalendars: [],
 	importAllDayOnly: true,
 	wideLayout: false,
-	settingsVersion: 2,
+	settingsVersion: 3,
 };
 
 function parseViewMode(value: string): ViewMode {
@@ -35,7 +35,9 @@ export class LinearYearCalendarSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Events folder")
-			.setDesc("Markdown notes with start/end dates live here. ICS imports go into subfolders.")
+			.setDesc(
+				"Root for notes. Local calendars use Calendar/<Name>/. Google ICS imports go under Calendar/google/<Name>/.",
+			)
 			.addText((text) => {
 				text.setValue(this.plugin.settings.eventsFolder).onChange(async (value) => {
 					this.plugin.settings.eventsFolder = value.trim() || "Calendar";
@@ -45,7 +47,9 @@ export class LinearYearCalendarSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Default calendar name")
-			.setDesc("Used when you click or drag to create an event.")
+			.setDesc(
+				"Local planning calendar used when you click or drag to create an event. Google calendars are read-only.",
+			)
 			.addText((text) => {
 				text.setValue(this.plugin.settings.defaultCalendar).onChange(async (value) => {
 					this.plugin.settings.defaultCalendar = value.trim() || "Personal";

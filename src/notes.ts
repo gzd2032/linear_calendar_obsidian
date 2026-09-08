@@ -1,4 +1,5 @@
 import { type App, TFile, normalizePath } from "obsidian";
+import { googleCalendarFolder, localCalendarFolder, sanitizeCalendarName } from "./calendar-paths";
 import { sanitizeFilename } from "./format";
 import {
 	buildNoteBody,
@@ -10,6 +11,15 @@ import {
 import type { CalendarEvent } from "./types";
 
 export { buildNoteBody, extractNoteDescription, toIsoDate } from "./note-model";
+export {
+	googleCalendarDayUrl,
+	googleCalendarFolder,
+	isGoogleEvent,
+	localCalendarFolder,
+	localCalendarNames,
+	partitionCalendars,
+	sanitizeCalendarName,
+} from "./calendar-paths";
 
 export function listEventNotes(app: App, folder: string): CalendarEvent[] {
 	const prefix = normalizePath(folder).replace(/\/$/, "");
@@ -33,9 +43,14 @@ export function listEventNotes(app: App, folder: string): CalendarEvent[] {
 export async function ensureFolder(app: App, folder: string): Promise<void> {
 	const path = normalizePath(folder);
 	if (!path) return;
-	const existing = app.vault.getAbstractFileByPath(path);
-	if (existing) return;
-	await app.vault.createFolder(path);
+	const parts = path.split("/").filter(Boolean);
+	let current = "";
+	for (const part of parts) {
+		current = current ? `${current}/${part}` : part;
+		const existing = app.vault.getAbstractFileByPath(current);
+		if (existing) continue;
+		await app.vault.createFolder(current);
+	}
 }
 
 export async function readNoteDescription(app: App, path: string): Promise<string> {
@@ -46,6 +61,26 @@ export async function readNoteDescription(app: App, path: string): Promise<strin
 }
 
 export async function createEventNote(
+	app: App,
+	eventsFolder: string,
+	event: Omit<CalendarEvent, "id" | "path">,
+): Promise<TFile> {
+	const calendar = sanitizeCalendarName(event.calendar);
+	const folder = localCalendarFolder(eventsFolder, calendar);
+	await ensureFolder(app, folder);
+	const payload = { ...event, calendar };
+	const base = normalizePath(`${folder}/${event.start} ${sanitizeFilename(event.title)}`);
+	let path = `${base}.md`;
+	let n = 2;
+	while (app.vault.getAbstractFileByPath(path)) {
+		path = `${base} ${n}.md`;
+		n += 1;
+	}
+	return app.vault.create(path, buildNoteBody(payload));
+}
+
+/** Create a note in an explicit folder (used for Google ICS imports). */
+export async function createEventNoteInFolder(
 	app: App,
 	folder: string,
 	event: Omit<CalendarEvent, "id" | "path">,
@@ -73,13 +108,13 @@ export async function updateEventNote(
 
 export async function upsertIcsNotes(
 	app: App,
-	folder: string,
+	eventsFolder: string,
 	calendar: string,
 	color: string,
 	incoming: CalendarEvent[],
 	year: number,
 ): Promise<{ written: number; trashed: number }> {
-	const dest = normalizePath(`${folder}/${sanitizeFilename(calendar)}`);
+	const dest = googleCalendarFolder(eventsFolder, calendar);
 	await ensureFolder(app, dest);
 	const existing = listEventNotes(app, dest);
 	const byKey = new Map(
@@ -101,7 +136,7 @@ export async function upsertIcsNotes(
 				continue;
 			}
 		}
-		await createEventNote(app, dest, payload);
+		await createEventNoteInFolder(app, dest, payload);
 		written += 1;
 	}
 	let trashed = 0;

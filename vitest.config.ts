@@ -14,6 +14,7 @@ export default defineConfig({
 				"src/segments.ts",
 				"src/ics.ts",
 				"src/note-model.ts",
+				"src/calendar-paths.ts",
 			],
 			thresholds: {
 				lines: 80,
