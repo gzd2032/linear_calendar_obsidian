@@ -131,7 +131,7 @@
 	padding: 4px 10px;
 	font-size: 12px;
 	border: 1px solid var(--byc-line);
-	background: #fff;
+	background: transparent;
 	border-radius: 8px;
 	min-width: 5.5em;
 }
@@ -156,6 +156,9 @@
 	min-width: 0;
 	width: max-content;
 	padding: 4px;
+	left: 50%;
+	right: auto;
+	transform: translateX(-50%);
 }
 
 .byc-menu.is-hidden {
@@ -168,18 +171,36 @@
 	white-space: nowrap;
 	text-align: left;
 	border: 0;
-	background: transparent;
-	border-radius: 8px;
+	outline: none;
+	box-shadow: none;
+	background: none !important;
+	background-color: transparent !important;
+	border-radius: 0;
 	padding: 6px 10px;
 	cursor: pointer;
 	font: inherit;
 	font-size: 13px;
 	font-weight: 700;
+	color: var(--byc-text);
+	-webkit-appearance: none;
+	appearance: none;
 }
 
 .byc-mode-option:hover,
+.byc-mode-option:focus,
+.byc-mode-option:focus-visible,
+.byc-mode-option:active,
 .byc-mode-option.is-active {
-	background: #f3f1fb;
+	background: none !important;
+	background-color: transparent !important;
+	box-shadow: none;
+}
+
+.byc-mode-option:hover {
+	background: color-mix(in srgb, #4a7ab5 12%, #fff) !important;
+	background-color: color-mix(in srgb, #4a7ab5 12%, #fff) !important;
+	color: #1a3a6b;
+	border-radius: 8px;
 }
 
 .byc-menu-empty {
@@ -818,7 +839,7 @@
 	border: none;
 	outline: none;
 	box-shadow: none;
-	background: transparent;
+	background: transparent !important;
 	color: #a3a39c;
 	font-size: 22px;
 	line-height: 1;
@@ -830,7 +851,7 @@
 }
 
 .byc-popover-close:hover {
-	background: rgba(0, 0, 0, 0.05);
+	background: rgba(0, 0, 0, 0.05) !important;
 	color: #666;
 	border: none;
 	box-shadow: none;
@@ -839,6 +860,7 @@
 .byc-popover-close:focus,
 .byc-popover-close:focus-visible,
 .byc-popover-close:active {
+	background: transparent !important;
 	border: none;
 	outline: none;
 	box-shadow: none;
