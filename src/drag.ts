@@ -1,3 +1,4 @@
+import { el } from "./dom";
 import { clampRange, eventDayCount, formatEventRange } from "./grid";
 
 export interface DragState {
@@ -46,11 +47,13 @@ export function showDragPreview(
 	clientX: number,
 	clientY: number,
 ): void {
-	const root = (scope.closest(".byc-root") as HTMLElement | null) ?? scope;
-	let tip = root.querySelector<HTMLElement>(".byc-drag-preview");
-	if (!tip) {
-		tip = document.createElement("div");
-		tip.className = "byc-drag-preview";
+	const root = scope.closest(".byc-root") ?? scope;
+	let tip: HTMLElement;
+	const existing = root.querySelector(".byc-drag-preview");
+	if (existing instanceof HTMLElement) {
+		tip = existing;
+	} else {
+		tip = el("div", { cls: "byc-drag-preview" });
 		root.appendChild(tip);
 	}
 	tip.textContent = formatSelectionPreview(start, end);
@@ -64,9 +67,9 @@ export function showDragPreview(
 }
 
 export function hideDragPreview(scope: HTMLElement): void {
-	const root = (scope.closest(".byc-root") as HTMLElement | null) ?? scope;
-	const tip = root.querySelector<HTMLElement>(".byc-drag-preview");
-	if (tip) tip.hidden = true;
+	const root = scope.closest(".byc-root") ?? scope;
+	const tip = root.querySelector(".byc-drag-preview");
+	if (tip instanceof HTMLElement) tip.hidden = true;
 }
 
 export type RangeSelectHandler = (start: string, end: string) => void;

@@ -1,3 +1,27 @@
+type CreateElFn = <K extends keyof HTMLElementTagNameMap>(
+	tag: K,
+	options?: Record<string, unknown>,
+) => HTMLElementTagNameMap[K];
+
+/** Prefer Obsidian's global createEl when present (plugin lint); fall back for browser preview. */
+function createNode<K extends keyof HTMLElementTagNameMap>(tag: K): HTMLElementTagNameMap[K] {
+	const win = window as unknown as {
+		createEl?: CreateElFn;
+		activeWindow?: Window & { createEl?: CreateElFn };
+	};
+	const create = win.activeWindow?.createEl ?? win.createEl;
+	if (typeof create === "function") {
+		return create(tag);
+	}
+	const holder = window.document.body;
+	if (typeof holder.createEl === "function") {
+		const node = holder.createEl(tag);
+		node.remove();
+		return node;
+	}
+	return window.document.createElement(tag);
+}
+
 export function el<K extends keyof HTMLElementTagNameMap>(
 	tag: K,
 	options?: {
@@ -9,7 +33,7 @@ export function el<K extends keyof HTMLElementTagNameMap>(
 		attr?: Record<string, string>;
 	},
 ): HTMLElementTagNameMap[K] {
-	const node = document.createElement(tag);
+	const node = createNode(tag);
 	if (options?.cls) node.className = options.cls;
 	if (options?.text) node.textContent = options.text;
 	if (options?.type) node.setAttribute("type", options.type);
