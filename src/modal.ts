@@ -1,5 +1,6 @@
 import { Modal, Setting } from "obsidian";
 import { sanitizeCalendarName } from "./calendar-paths";
+import { endOnOrAfterStart } from "./dates";
 import { PASTEL_COLORS } from "./types";
 
 export interface EventDraft {
@@ -45,24 +46,31 @@ export class EventCreateModal extends Modal {
 
 		const dates = new Setting(contentEl).setName("Dates");
 		dates.controlEl.addClass("byc-date-row");
+		let endInput: HTMLInputElement | null = null;
+		const syncEndMin = (): void => {
+			if (!endInput) return;
+			endInput.min = this.draft.start;
+		};
 		dates.addText((text) => {
-			text
-				.setPlaceholder("Start YYYY-MM-DD")
-				.setValue(this.draft.start)
-				.onChange((value) => {
-					this.draft.start = value;
-				});
+			text.inputEl.type = "date";
+			text.setValue(this.draft.start).onChange((value) => {
+				this.draft.start = value;
+				this.draft.end = endOnOrAfterStart(this.draft.start, this.draft.end);
+				if (endInput) endInput.value = this.draft.end;
+				syncEndMin();
+			});
 			text.inputEl.setAttribute("aria-label", "Start date");
 		});
 		dates.addText((text) => {
-			text
-				.setPlaceholder("End YYYY-MM-DD")
-				.setValue(this.draft.end)
-				.onChange((value) => {
-					this.draft.end = value;
-				});
+			endInput = text.inputEl;
+			text.inputEl.type = "date";
+			text.setValue(this.draft.end).onChange((value) => {
+				this.draft.end = endOnOrAfterStart(this.draft.start, value);
+				if (endInput) endInput.value = this.draft.end;
+			});
 			text.inputEl.setAttribute("aria-label", "End date");
 		});
+		syncEndMin();
 
 		const OTHER = "__other__";
 		const calendarNames = [
@@ -133,6 +141,7 @@ export class EventCreateModal extends Modal {
 				.setCta()
 				.onClick(() => {
 					if (!this.draft.title.trim()) this.draft.title = "Untitled";
+					this.draft.end = endOnOrAfterStart(this.draft.start, this.draft.end);
 					this.draft.calendar = sanitizeCalendarName(
 						this.draft.calendar.trim() || calendarNames[0] || "Personal",
 					);
