@@ -709,8 +709,8 @@
 	resize: vertical;
 }
 
-.byc-modal datalist {
-	display: none;
+.byc-modal .dropdown {
+	min-width: 12em;
 }
 
 .byc-color-row {

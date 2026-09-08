@@ -261,14 +261,19 @@ export class EventDetailPopover {
 			async (draft: EventDraft) => {
 				if (!event.path) return;
 				try {
-					await updateEventNote(this.app, event.path, {
-						title: draft.title.trim() || "Untitled",
-						start: draft.start,
-						end: draft.end < draft.start ? draft.start : draft.end,
-						color: draft.color,
-						calendar: sanitizeCalendarName(draft.calendar || event.calendar),
-						description: draft.description,
-					});
+					await updateEventNote(
+						this.app,
+						event.path,
+						{
+							title: draft.title.trim() || "Untitled",
+							start: draft.start,
+							end: draft.end < draft.start ? draft.start : draft.end,
+							color: draft.color,
+							calendar: sanitizeCalendarName(draft.calendar || event.calendar),
+							description: draft.description,
+						},
+						this.getEventsFolder(),
+					);
 					new Notice("Event updated");
 					this.onChanged();
 				} catch (error) {

@@ -64,17 +64,47 @@ export class EventCreateModal extends Modal {
 			text.inputEl.setAttribute("aria-label", "End date");
 		});
 
-		const calendarNames = [...new Set([this.draft.calendar, ...this.calendars].filter(Boolean))];
-		new Setting(contentEl).setName("Calendar").addText((text) => {
-			text.setPlaceholder("Personal").setValue(this.draft.calendar).onChange((value) => {
-				this.draft.calendar = value;
-			});
-			const listId = `byc-calendar-list-${Date.now()}`;
-			text.inputEl.setAttribute("list", listId);
-			const list = contentEl.createEl("datalist", { attr: { id: listId } });
+		const OTHER = "__other__";
+		const calendarNames = [
+			...new Set(this.calendars.map((name) => sanitizeCalendarName(name)).filter(Boolean)),
+		].sort((a, b) => a.localeCompare(b));
+		const currentCalendar = sanitizeCalendarName(this.draft.calendar);
+		let usingOther = calendarNames.length === 0 || !calendarNames.includes(currentCalendar);
+
+		const calendarSetting = new Setting(contentEl).setName("Calendar");
+		const customSetting = new Setting(contentEl).setName("New calendar name");
+		let customInput: HTMLInputElement | null = null;
+		customSetting.addText((text) => {
+			customInput = text.inputEl;
+			text
+				.setPlaceholder("Calendar name")
+				.setValue(usingOther ? this.draft.calendar : "")
+				.onChange((value) => {
+					this.draft.calendar = value;
+				});
+			text.inputEl.setAttribute("aria-label", "New calendar name");
+		});
+		if (usingOther) customSetting.settingEl.show();
+		else customSetting.settingEl.hide();
+
+		calendarSetting.addDropdown((dropdown) => {
 			for (const name of calendarNames) {
-				list.createEl("option", { attr: { value: name } });
+				dropdown.addOption(name, name);
 			}
+			dropdown.addOption(OTHER, "Other…");
+			dropdown.setValue(usingOther ? OTHER : currentCalendar);
+			dropdown.onChange((value) => {
+				usingOther = value === OTHER;
+				if (usingOther) {
+					customSetting.settingEl.show();
+					this.draft.calendar = "";
+					if (customInput) customInput.value = "";
+					customInput?.focus();
+				} else {
+					customSetting.settingEl.hide();
+					this.draft.calendar = value;
+				}
+			});
 		});
 
 		new Setting(contentEl).setName("Description").addTextArea((area) => {
