@@ -159,6 +159,6 @@ After the first GitHub release (`1.0.0`) is published:
 ## Layouts
 
 - **Linear** — day 1 of every month is in the first column.
-- **Stacked** — months are offset so Sundays (or Mondays) stack in the same columns, matching Birdseye’s weekend alignment.
+- **Stacked** — months are offset so Sundays (or Mondays) stack in the same columns.
 - **Column** — months sit side by side with days top to bottom; events appear inside each month on their days.
 - **Col-Stack** — like Column, but months are weekday-aligned so weekends line up horizontally across the year.
