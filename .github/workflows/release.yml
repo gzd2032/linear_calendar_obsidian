@@ -1,0 +1,77 @@
+name: Release Obsidian plugin
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Verify bare semver tag
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          if [[ "$tag" == v* ]]; then
+            echo "Use a bare version tag (e.g. 1.0.0), not '$tag'."
+            exit 1
+          fi
+          if ! [[ "$tag" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-].+)?$ ]]; then
+            echo "Tag '$tag' is not a valid semver version."
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+        id: tag
+
+      - name: Build plugin
+        run: |
+          npm ci
+          npm run build
+
+      - name: Verify manifest version matches tag
+        run: |
+          tag="${{ steps.tag.outputs.tag }}"
+          manifest_version="$(node -e 'process.stdout.write(require("./manifest.json").version)')"
+          if [ "$manifest_version" != "$tag" ]; then
+            echo "manifest.json version ($manifest_version) does not match tag ($tag)"
+            exit 1
+          fi
+
+      - name: Package community assets
+        run: |
+          mkdir -p dist/linear-year-calendar
+          cp main.js manifest.json styles.css dist/linear-year-calendar/
+          (cd dist && zip -r linear-year-calendar.zip linear-year-calendar)
+
+      - name: Attest build provenance
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            main.js
+            styles.css
+            dist/linear-year-calendar.zip
+
+      - name: Create release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${{ steps.tag.outputs.tag }}"
+          gh release create "$tag" \
+            --title="$tag" \
+            --generate-notes \
+            main.js \
+            manifest.json \
+            styles.css \
+            dist/linear-year-calendar.zip

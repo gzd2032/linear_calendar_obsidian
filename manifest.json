@@ -5,5 +5,6 @@
 	"minAppVersion": "1.5.0",
 	"description": "A linear year planner: see all 12 months at once, create events from notes, and import Google Calendar via ICS.",
 	"author": "Gordon",
+	"authorUrl": "https://github.com/gzd2032",
 	"isDesktopOnly": false
 }
