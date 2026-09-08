@@ -15,12 +15,14 @@ An Obsidian plugin that shows your whole year at a glance: 12-month rows, pastel
 
 ### Manual install (from a GitHub release)
 
-1. Download `linear-year-calendar.zip` from the [latest release](https://github.com/gzd2032/linear_calendar_obsidian/releases/latest).
-2. Unzip it into `VaultFolder/.obsidian/plugins/` so you get:
-   `VaultFolder/.obsidian/plugins/linear-year-calendar/{manifest.json,main.js,styles.css}`
+1. Create `VaultFolder/.obsidian/plugins/linear-year-calendar/`.
+2. From the [latest release](https://github.com/gzd2032/linear_calendar_obsidian/releases/latest), download these three assets into that folder:
+   - `manifest.json`
+   - `main.js`
+   - `styles.css`
 3. Enable **Linear Year Calendar** under Community plugins.
 
-(Ignore GitHub’s auto-generated **Source code** zip/tar — that is the whole repository, not the plugin install package.)
+(Ignore GitHub’s auto-generated **Source code** zip/tar — that is the whole repository, not the plugin install package. Obsidian only uses the three files above.)
 
 ### Build from source
 
@@ -123,11 +125,13 @@ See [PLAN.md](PLAN.md) for architecture notes and prompt history.
 
 ### Release (community plugin format)
 
-Obsidian installs from a GitHub release whose **tag matches `manifest.json` version exactly** (bare semver, no `v` prefix). The workflow attaches **only**:
+Obsidian installs from a GitHub release whose **tag matches `manifest.json` version exactly** (bare semver, no `v` prefix). The workflow attaches **only** the three Obsidian install assets:
 
-- `linear-year-calendar.zip` → contains `linear-year-calendar/{manifest.json,main.js,styles.css}`
+- `main.js`
+- `manifest.json`
+- `styles.css`
 
-It does not attach the repository. GitHub still shows automatic **Source code** archives on the release page; use the plugin zip above for installs.
+It does not attach a custom plugin zip (Obsidian ignores those and the release scanner flags them). GitHub still shows automatic **Source code** archives on the release page; use the three files above for installs.
 
 Publish a release:
 
@@ -139,9 +143,9 @@ npm version patch   # or minor / major
 git push && git push --tags
 ```
 
-3. Pushing a bare tag such as `1.0.0` runs [.github/workflows/release.yml](.github/workflows/release.yml), which builds and uploads `linear-year-calendar.zip`.
+3. Pushing a bare tag such as `1.0.1` runs [.github/workflows/release.yml](.github/workflows/release.yml), which builds and uploads `main.js`, `manifest.json`, and `styles.css`.
 
-Local packaging without tagging:
+Local packaging (optional zip for your own use, not uploaded by CI):
 
 ```bash
 npm run package

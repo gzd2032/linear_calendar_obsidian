@@ -26,7 +26,7 @@ jobs:
         run: |
           tag="${GITHUB_REF#refs/tags/}"
           if [[ "$tag" == v* ]]; then
-            echo "Use a bare version tag (e.g. 1.0.0), not '$tag'."
+            echo "Use a bare version tag (e.g. 1.0.1), not '$tag'."
             exit 1
           fi
           if ! [[ "$tag" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-].+)?$ ]]; then
@@ -49,32 +49,32 @@ jobs:
             exit 1
           fi
 
-      - name: Package plugin folder zip
+      - name: Stage release assets
         run: |
-          rm -rf dist
-          mkdir -p dist/linear-year-calendar
-          cp main.js manifest.json styles.css dist/linear-year-calendar/
-          (cd dist && zip -r linear-year-calendar.zip linear-year-calendar)
-          echo "Zip contents:"
-          unzip -l dist/linear-year-calendar.zip
+          # Obsidian requires these three files as direct GitHub Release assets.
+          # Do not upload a custom zip — Obsidian ignores it and the scanner flags it.
+          test -f main.js && test -f manifest.json && test -f styles.css
+          ls -la main.js manifest.json styles.css
 
       - name: Attest build provenance
         uses: actions/attest@v4
         with:
-          subject-path: dist/linear-year-calendar.zip
+          subject-path: |
+            main.js
+            manifest.json
+            styles.css
 
       - name: Create or update release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tag="${{ steps.tag.outputs.tag }}"
-          # Upload only the plugin package (folder with the three install files).
-          # GitHub also shows auto-generated Source code archives; those are not our assets.
+          # Upload only Obsidian install assets. GitHub still shows auto Source code archives.
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" dist/linear-year-calendar.zip --clobber
+            gh release upload "$tag" main.js manifest.json styles.css --clobber
           else
             gh release create "$tag" \
               --title="$tag" \
               --generate-notes \
-              dist/linear-year-calendar.zip
+              main.js manifest.json styles.css
           fi
