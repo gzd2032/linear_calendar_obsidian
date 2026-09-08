@@ -1,7 +1,7 @@
 import { Notice, TFile, type App } from "obsidian";
 import { googleCalendarDayUrl, isGoogleEvent, sanitizeCalendarName } from "./calendar-paths";
 import { div, el, mount } from "./dom";
-import { eventDayCount, formatShortDate } from "./grid";
+import { endOnOrAfterStart, eventDayCount, formatShortDate } from "./grid";
 import type { CalendarEvent } from "./types";
 import { EventCreateModal, type EventDraft } from "./modal";
 import { readNoteDescription, updateEventNote } from "./notes";
@@ -267,7 +267,7 @@ export class EventDetailPopover {
 						{
 							title: draft.title.trim() || "Untitled",
 							start: draft.start,
-							end: draft.end < draft.start ? draft.start : draft.end,
+							end: endOnOrAfterStart(draft.start, draft.end),
 							color: draft.color,
 							calendar: sanitizeCalendarName(draft.calendar || event.calendar),
 							description: draft.description,
