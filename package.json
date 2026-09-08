@@ -1,7 +1,7 @@
 {
 	"name": "linear-year-calendar",
 	"version": "1.0.0",
-	"description": "Birdseye-style linear year planner for Obsidian",
+	"description": "Linear year planner for Obsidian",
 	"main": "main.js",
 	"type": "module",
 	"scripts": {
