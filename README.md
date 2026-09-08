@@ -2,32 +2,31 @@
 
 An Obsidian plugin that shows your whole year at a glance, in the style of [Birdseye](https://birdseyecal.com/): 12 month rows, pastel event bars, Linear / Stacked / Column / Col-Stack layouts, click/drag to create notes, event detail popover, and Google Calendar import via ICS.
 
-## Install in Obsidian
+## Install
 
-This plugin is not in the Community Plugin directory yet. Install it manually:
+### Community plugins (once listed)
 
-### 1. Build the plugin (once)
+1. Open Obsidian → Settings → Community plugins.
+2. Turn **Restricted mode** off if it is on.
+3. Browse → search **Linear Year Calendar** → Install → Enable.
 
-In this folder:
+### Manual install (from a GitHub release)
+
+1. Download `manifest.json`, `main.js`, and `styles.css` from the [latest release](https://github.com/gzd2032/linear_calendar_obsidian/releases/latest).
+2. Create `VaultFolder/.obsidian/plugins/linear-year-calendar/`.
+3. Copy those three files into that folder.
+4. Enable **Linear Year Calendar** under Community plugins.
+
+You can also unpack `linear-year-calendar.zip` from the release into the same plugins folder.
+
+### Build from source
 
 ```bash
 npm install
 npm run build
 ```
 
-That produces `main.js` next to `manifest.json` and `styles.css`. Those three files are the plugin.
-
-### 2. Copy it into your vault
-
-1. Open your vault in Finder (macOS) or Explorer (Windows).
-2. Go to `.obsidian/plugins/`. If `plugins` does not exist, create it.
-3. Create a folder named `linear-year-calendar`.
-4. Copy these files into that folder:
-   - `manifest.json`
-   - `main.js`
-   - `styles.css`
-
-Example on macOS:
+That produces `main.js` next to `manifest.json` and `styles.css`.
 
 ```bash
 VAULT="$HOME/path/to/your/vault"
@@ -35,17 +34,7 @@ mkdir -p "$VAULT/.obsidian/plugins/linear-year-calendar"
 cp manifest.json main.js styles.css "$VAULT/.obsidian/plugins/linear-year-calendar/"
 ```
 
-### 3. Enable it
-
-1. Open Obsidian.
-2. Settings → Community plugins.
-3. Turn **Restricted mode** off if it is on.
-4. Find **Linear Year Calendar** and enable it.
-
-### 4. Open the view
-
-- Click the calendar icon in the left ribbon, or
-- Command palette (`Cmd/Ctrl + P`) → **Open Linear Year Calendar**
+Enable the plugin, then open it from the calendar ribbon icon or **Open Linear Year Calendar** in the command palette.
 
 ### Reload after code changes
 
@@ -114,6 +103,8 @@ If you previously imported into `Calendar/<name>/` (without `google/`), refresh 
 ```bash
 npm install
 npm run dev          # watch-build plugin
+npm run build        # production main.js
+npm run package      # build + dist/linear-year-calendar.zip
 npm run preview      # build browser preview
 npm test             # Vitest unit tests
 npm run test:coverage
@@ -126,6 +117,42 @@ npm run test:coverage
 Pure logic (`dates`, `format`, `year-grid`, `segments`, `note-model`, `ics`) is covered by Vitest (≥80% lines). Obsidian-facing code lives in `notes`, `view`, `ui`, `popover`, and `modal`.
 
 See [PLAN.md](PLAN.md) for architecture notes and prompt history.
+
+### Release (community plugin format)
+
+Obsidian installs from a GitHub release whose **tag matches `manifest.json` version exactly** (bare semver, no `v` prefix). Attach these assets:
+
+- `main.js`
+- `manifest.json`
+- `styles.css`
+- (optional) `linear-year-calendar.zip` containing the three files above
+
+Publish a release:
+
+1. Update `minAppVersion` in `manifest.json` if needed.
+2. Bump version (updates `package.json`, `manifest.json`, and `versions.json`):
+
+```bash
+npm version patch   # or minor / major
+git push && git push --tags
+```
+
+3. Pushing a bare tag such as `1.0.0` runs [.github/workflows/release.yml](.github/workflows/release.yml), which builds, verifies the tag matches the manifest, and publishes the release assets.
+
+Local packaging without tagging:
+
+```bash
+npm run package
+# → dist/linear-year-calendar/{manifest.json,main.js,styles.css}
+# → dist/linear-year-calendar.zip
+```
+
+### Submit to the Community Plugin directory
+
+After the first GitHub release (`1.0.0`) is published:
+
+1. Confirm [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines).
+2. Open a PR to [obsidianmd/obsidian-releases](https://github.com/obsidianmd/obsidian-releases) adding this plugin to `community-plugins.json`.
 
 ## Layouts
 
