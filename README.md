@@ -1,6 +1,6 @@
 # Linear Year Calendar
 
-An Obsidian plugin that shows your whole year at a glance, in the style of [Birdseye](https://birdseyecal.com/): 12 month rows, pastel event bars, Linear / Stacked / Column / Col-Stack layouts, click/drag to create notes, event detail popover, and Google Calendar import via ICS.
+An Obsidian plugin that shows your whole year at a glance: 12-month rows, pastel event bars, Linear / Stacked / Column / Col-Stack layouts, click/drag to create notes, event detail popover, and Google Calendar import via ICS.
 
 ![screenshot](./linear_calendar_screenshot.jpg)
 ---
