@@ -67,6 +67,40 @@ export function localCalendarNames(
 	return [...names].sort((a, b) => a.localeCompare(b));
 }
 
+/** Merge calendar name groups into a sorted local-only list. */
+export function mergeLocalCalendarNames(...groups: string[][]): string[] {
+	const names = new Set<string>();
+	for (const group of groups) {
+		for (const name of group) {
+			if (!name.trim()) continue;
+			names.add(sanitizeCalendarName(name));
+		}
+	}
+	return [...names].sort((a, b) => a.localeCompare(b));
+}
+
+/** Filename of `currentPath` placed under `destFolder`. */
+export function notePathInFolder(currentPath: string, destFolder: string): string {
+	const slash = currentPath.replace(/\\/g, "/").lastIndexOf("/");
+	const name = slash >= 0 ? currentPath.slice(slash + 1) : currentPath;
+	return joinPath(destFolder, name || "note.md");
+}
+
+/** Append ` 2`, ` 3`, … before the extension when `desiredPath` is taken. */
+export function uniqueNotePath(desiredPath: string, exists: (path: string) => boolean): string {
+	if (!exists(desiredPath)) return desiredPath;
+	const md = desiredPath.toLowerCase().endsWith(".md");
+	const base = md ? desiredPath.slice(0, -3) : desiredPath;
+	const ext = md ? ".md" : "";
+	let n = 2;
+	let candidate = `${base} ${n}${ext}`;
+	while (exists(candidate)) {
+		n += 1;
+		candidate = `${base} ${n}${ext}`;
+	}
+	return candidate;
+}
+
 export function partitionCalendars(
 	events: CalendarEvent[],
 	eventsFolder: string,

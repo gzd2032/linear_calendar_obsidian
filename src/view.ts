@@ -6,7 +6,7 @@ import { EventCreateModal } from "./modal";
 import {
 	createEventNote,
 	listEventNotes,
-	localCalendarNames,
+	localCalendarsForPicker,
 	sanitizeCalendarName,
 	upsertIcsNotes,
 } from "./notes";
@@ -50,7 +50,8 @@ export class YearCalendarView extends ItemView {
 			this.app,
 			() => this.render(),
 			() =>
-				localCalendarNames(
+				localCalendarsForPicker(
+					this.app,
 					listEventNotes(this.app, this.plugin.settings.eventsFolder),
 					this.plugin.settings.eventsFolder,
 					this.plugin.settings.defaultCalendar,
@@ -163,7 +164,8 @@ export class YearCalendarView extends ItemView {
 	}
 
 	private openCreateModal(start: string, end: string, events: CalendarEvent[]): void {
-		const calendars = localCalendarNames(
+		const calendars = localCalendarsForPicker(
+			this.app,
 			events,
 			this.plugin.settings.eventsFolder,
 			this.plugin.settings.defaultCalendar,

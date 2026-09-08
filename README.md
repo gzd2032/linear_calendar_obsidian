@@ -62,7 +62,7 @@ If you rebuild `main.js`, run **Reload app without saving** from the command pal
 | Local planning | `Calendar/<CalendarName>/` | Create, edit, delete |
 | Google ICS | `Calendar/google/<CalendarName>/` | View only; open the day in Google Calendar |
 
-Click/drag creates notes in the **Default calendar name** folder (settings). You can pick or type other **local** calendar names in the create/edit modal. Filters group **Local** vs **Google**.
+Click/drag creates notes in the **Default calendar name** folder (settings). In the create/edit modal, pick a **local** calendar from the dropdown, or choose **Other…** to name a new one (Google calendars are not listed). Changing calendar on edit moves the note into that folder. Filters group **Local** vs **Google**.
 
 ```yaml
 ---
