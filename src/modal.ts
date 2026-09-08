@@ -12,18 +12,20 @@ export interface EventDraft {
 
 export class EventCreateModal extends Modal {
 	private draft: EventDraft;
+	private calendars: string[];
 	private onSubmit: (draft: EventDraft) => void;
 	private heading: string;
 
 	constructor(
 		app: ConstructorParameters<typeof Modal>[0],
 		draft: EventDraft,
-		_calendars: string[],
+		calendars: string[],
 		onSubmit: (draft: EventDraft) => void,
 		heading = "New event",
 	) {
 		super(app);
 		this.draft = { ...draft };
+		this.calendars = calendars;
 		this.onSubmit = onSubmit;
 		this.heading = heading;
 	}
@@ -61,6 +63,19 @@ export class EventCreateModal extends Modal {
 			text.inputEl.setAttribute("aria-label", "End date");
 		});
 
+		const calendarNames = [...new Set([this.draft.calendar, ...this.calendars].filter(Boolean))];
+		new Setting(contentEl).setName("Calendar").addText((text) => {
+			text.setPlaceholder("Personal").setValue(this.draft.calendar).onChange((value) => {
+				this.draft.calendar = value;
+			});
+			const listId = `byc-calendar-list-${Date.now()}`;
+			text.inputEl.setAttribute("list", listId);
+			const list = contentEl.createEl("datalist", { attr: { id: listId } });
+			for (const name of calendarNames) {
+				list.createEl("option", { attr: { value: name } });
+			}
+		});
+
 		new Setting(contentEl).setName("Description").addTextArea((area) => {
 			area.setPlaceholder("Optional notes…").setValue(this.draft.description).onChange((value) => {
 				this.draft.description = value;
@@ -87,6 +102,7 @@ export class EventCreateModal extends Modal {
 				.setCta()
 				.onClick(() => {
 					if (!this.draft.title.trim()) this.draft.title = "Untitled";
+					this.draft.calendar = this.draft.calendar.trim() || calendarNames[0] || "Personal";
 					this.onSubmit(this.draft);
 					this.close();
 				});

@@ -700,6 +700,10 @@
 	resize: vertical;
 }
 
+.byc-modal datalist {
+	display: none;
+}
+
 .byc-color-row {
 	display: flex;
 	flex-wrap: wrap;

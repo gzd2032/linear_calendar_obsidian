@@ -114,16 +114,33 @@ export function renderCalendar(
 		}
 	}
 
-	window.setTimeout(() => {
-		document.addEventListener(
-			"click",
-			() => {
-				displayMenu.classList.add("is-hidden");
-				filtersMenu.classList.add("is-hidden");
-			},
-			{ once: true },
-		);
-	}, 0);
+	bindMenuDismiss(root, [displayMenu, filtersMenu]);
+}
+
+const menuDismiss = new WeakMap<HTMLElement, { menus: HTMLElement[]; onClick: (event: MouseEvent) => void }>();
+
+function bindMenuDismiss(root: HTMLElement, menus: HTMLElement[]): void {
+	const existing = menuDismiss.get(root);
+	if (existing) {
+		existing.menus = menus;
+		return;
+	}
+	const onClick = (event: MouseEvent) => {
+		const state = menuDismiss.get(root);
+		if (!state) return;
+		const target = event.target as HTMLElement | null;
+		if (target?.closest(".byc-menu-wrap")) return;
+		for (const menu of state.menus) menu.classList.add("is-hidden");
+	};
+	menuDismiss.set(root, { menus, onClick });
+	document.addEventListener("click", onClick);
+}
+
+export function teardownCalendarUi(root: HTMLElement): void {
+	const state = menuDismiss.get(root);
+	if (!state) return;
+	document.removeEventListener("click", state.onClick);
+	menuDismiss.delete(root);
 }
 
 function filterVisibleEvents(

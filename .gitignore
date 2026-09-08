@@ -6,6 +6,8 @@ html
 *.map
 data.json
 .DS_Store
+.cursur
 .vscode
 .idea
 preview/preview.js
+PLAN.md

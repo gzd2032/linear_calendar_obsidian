@@ -18,6 +18,7 @@ export class EventDetailPopover {
 	constructor(
 		private app: App,
 		private onChanged: () => void,
+		private getCalendars: () => string[] = () => [],
 	) {}
 
 	/** True when the popover is showing this event. */
@@ -209,6 +210,7 @@ export class EventDetailPopover {
 	private async openEdit(event: CalendarEvent): Promise<void> {
 		this.close();
 		const description = event.path ? await readNoteDescription(this.app, event.path) : "";
+		const calendars = this.calendarsFor(event);
 		new EventCreateModal(
 			this.app,
 			{
@@ -219,7 +221,7 @@ export class EventDetailPopover {
 				calendar: event.calendar,
 				description,
 			},
-			[event.calendar],
+			calendars,
 			async (draft: EventDraft) => {
 				if (!event.path) return;
 				try {
@@ -241,6 +243,12 @@ export class EventDetailPopover {
 			},
 			"Edit event",
 		).open();
+	}
+
+	private calendarsFor(event: CalendarEvent): string[] {
+		const names = this.getCalendars();
+		if (names.includes(event.calendar)) return names;
+		return [event.calendar, ...names];
 	}
 
 	private async deleteEvent(event: CalendarEvent): Promise<void> {

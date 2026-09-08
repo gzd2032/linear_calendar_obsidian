@@ -8,6 +8,22 @@ interface RawEvent {
 	dtEnd: string;
 	allDay: boolean;
 	rrule: string | null;
+	exdates: Set<string>;
+}
+
+const WEEKDAY_CODES: Record<string, number> = {
+	SU: 0,
+	MO: 1,
+	TU: 2,
+	WE: 3,
+	TH: 4,
+	FR: 5,
+	SA: 6,
+};
+
+/** Google and Apple calendar links often use webcal://; fetch needs https://. */
+export function normalizeIcsUrl(url: string): string {
+	return url.trim().replace(/^webcal:\/\//i, "https://");
 }
 
 export function parseIcs(
@@ -69,6 +85,7 @@ function parseRawEvent(body: string): RawEvent | null {
 		dtEnd: end,
 		allDay,
 		rrule: prop(body, "RRULE"),
+		exdates: parseExdates(body),
 	};
 }
 
@@ -79,9 +96,13 @@ function expandRawEvent(
 ): { start: string; end: string }[] {
 	const durationDays = dayDelta(raw.dtStart, raw.dtEnd);
 	if (!raw.rrule) {
-		return [{ start: raw.dtStart, end: raw.dtEnd }];
+		return occurrenceIfKept(raw.dtStart, raw.dtEnd, raw.exdates);
 	}
+	const byDays = parseByDays(raw.rrule);
 	const freq = /FREQ=([A-Z]+)/i.exec(raw.rrule)?.[1]?.toUpperCase();
+	if (freq === "WEEKLY" && byDays.length > 0) {
+		return expandWeeklyByDay(raw, byDays, durationDays, fromYear, toYear);
+	}
 	const interval = Number(/INTERVAL=(\d+)/i.exec(raw.rrule)?.[1] ?? "1") || 1;
 	const count = Number(/COUNT=(\d+)/i.exec(raw.rrule)?.[1] ?? "0");
 	const untilRaw = /UNTIL=([^;]+)/i.exec(raw.rrule)?.[1];
@@ -90,21 +111,103 @@ function expandRawEvent(
 	const windowEnd = `${toYear}-12-31`;
 	const out: { start: string; end: string }[] = [];
 	let cursor = parseISODate(raw.dtStart);
-	if (!cursor) return [{ start: raw.dtStart, end: raw.dtEnd }];
+	if (!cursor) return occurrenceIfKept(raw.dtStart, raw.dtEnd, raw.exdates);
 	let emitted = 0;
 	for (let i = 0; i < 800; i++) {
 		const start = formatISODate(cursor);
 		if (until && start > until) break;
 		if (count && emitted >= count) break;
-		if (start > windowEnd && emitted > 0) break;
-		const end = addDays(start, durationDays);
-		if (end >= windowStart && start <= windowEnd) {
-			out.push({ start, end });
-		}
+		if (start > windowEnd) break;
 		emitted += 1;
+		if (!raw.exdates.has(start)) {
+			const end = addDays(start, durationDays);
+			if (end >= windowStart && start <= windowEnd) {
+				out.push({ start, end });
+			}
+		}
 		if (!advance(cursor, freq, interval)) break;
 	}
-	return out.length > 0 ? out : [{ start: raw.dtStart, end: raw.dtEnd }];
+	return out.length > 0 ? out : occurrenceIfKept(raw.dtStart, raw.dtEnd, raw.exdates);
+}
+
+function expandWeeklyByDay(
+	raw: RawEvent,
+	weekdays: number[],
+	durationDays: number,
+	fromYear: number,
+	toYear: number,
+): { start: string; end: string }[] {
+	const rrule = raw.rrule ?? "";
+	const interval = Number(/INTERVAL=(\d+)/i.exec(rrule)?.[1] ?? "1") || 1;
+	const count = Number(/COUNT=(\d+)/i.exec(rrule)?.[1] ?? "0");
+	const untilRaw = /UNTIL=([^;]+)/i.exec(rrule)?.[1];
+	const until = untilRaw ? parseIcsDate(`DUMMY:${untilRaw}`)?.iso : null;
+	const windowStart = `${fromYear}-01-01`;
+	const windowEnd = `${toYear}-12-31`;
+	const anchor = parseISODate(raw.dtStart);
+	if (!anchor) return occurrenceIfKept(raw.dtStart, raw.dtEnd, raw.exdates);
+	const out: { start: string; end: string }[] = [];
+	let emitted = 0;
+	for (let i = 0; i < 800; i++) {
+		for (const weekday of weekdays) {
+			const occ = dateOnWeekday(anchor, weekday);
+			const start = formatISODate(occ);
+			if (start < raw.dtStart) continue;
+			if (until && start > until) return out;
+			if (count && emitted >= count) return out;
+			emitted += 1;
+			if (raw.exdates.has(start)) continue;
+			const end = addDays(start, durationDays);
+			if (end >= windowStart && start <= windowEnd) {
+				out.push({ start, end });
+			}
+		}
+		anchor.setDate(anchor.getDate() + 7 * interval);
+		const next = formatISODate(anchor);
+		if (next > windowEnd) break;
+		if (until && next > until) break;
+	}
+	return out;
+}
+
+function dateOnWeekday(ref: Date, weekday: number): Date {
+	const date = new Date(ref);
+	date.setDate(date.getDate() + (weekday - date.getDay()));
+	return date;
+}
+
+function parseByDays(rrule: string): number[] {
+	const raw = /BYDAY=([^;]+)/i.exec(rrule)?.[1];
+	if (!raw) return [];
+	const days: number[] = [];
+	for (const token of raw.split(",")) {
+		const code = /([A-Z]{2})$/i.exec(token.trim())?.[1]?.toUpperCase();
+		const day = code ? WEEKDAY_CODES[code] : undefined;
+		if (day !== undefined && !days.includes(day)) days.push(day);
+	}
+	return days.sort((a, b) => a - b);
+}
+
+function parseExdates(body: string): Set<string> {
+	const out = new Set<string>();
+	for (const line of allPropLines(body, "EXDATE")) {
+		const colon = line.indexOf(":");
+		if (colon < 0) continue;
+		const prefix = line.slice(0, colon);
+		for (const part of line.slice(colon + 1).split(",")) {
+			const parsed = parseIcsDate(`${prefix}:${part.trim()}`);
+			if (parsed) out.add(parsed.iso);
+		}
+	}
+	return out;
+}
+
+function occurrenceIfKept(
+	start: string,
+	end: string,
+	exdates: Set<string>,
+): { start: string; end: string }[] {
+	return exdates.has(start) ? [] : [{ start, end }];
 }
 
 function advance(date: Date, freq: string | undefined, interval: number): boolean {
@@ -141,16 +244,20 @@ function prop(body: string, name: string): string | null {
 	return idx >= 0 ? line.slice(idx + 1).trim() : null;
 }
 
-function propLine(body: string, name: string): string | null {
-	const lines = body.split("\n");
+function allPropLines(body: string, name: string): string[] {
 	const prefix = name.toUpperCase();
-	for (const line of lines) {
+	const out: string[] = [];
+	for (const line of body.split("\n")) {
 		const upper = line.toUpperCase();
 		if (upper.startsWith(`${prefix}:`) || upper.startsWith(`${prefix};`)) {
-			return line.trim();
+			out.push(line.trim());
 		}
 	}
-	return null;
+	return out;
+}
+
+function propLine(body: string, name: string): string | null {
+	return allPropLines(body, name)[0] ?? null;
 }
 
 function parseIcsDate(line: string): { iso: string; allDay: boolean } | null {
