@@ -3,7 +3,7 @@
 	"name": "Linear Year Calendar",
 	"version": "1.0.0",
 	"minAppVersion": "1.5.0",
-	"description": "A Birdseye-style year planner: see all 12 months at once, create events from notes, and import Google Calendar via ICS.",
+	"description": "A linear year planner: see all 12 months at once, create events from notes, and import Google Calendar via ICS.",
 	"author": "Gordon",
 	"isDesktopOnly": false
 }

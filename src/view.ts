@@ -1,5 +1,5 @@
 import { ItemView, Notice, requestUrl, type WorkspaceLeaf } from "obsidian";
-import { colorForName, parseISODate } from "./grid";
+import { colorForName, endOnOrAfterStart, parseISODate } from "./grid";
 import { parseIcs, normalizeIcsUrl } from "./ics";
 import type LinearYearCalendarPlugin from "./main";
 import { EventCreateModal } from "./modal";
@@ -192,7 +192,7 @@ export class YearCalendarView extends ItemView {
 				const file = await createEventNote(this.app, this.plugin.settings.eventsFolder, {
 					title: draft.title,
 					start: draft.start,
-					end: draft.end < draft.start ? draft.start : draft.end,
+					end: endOnOrAfterStart(draft.start, draft.end),
 					color: draft.color,
 					calendar,
 					description: draft.description,

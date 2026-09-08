@@ -696,11 +696,16 @@
 	display: flex;
 	gap: 8px;
 	align-items: center;
+	flex-wrap: wrap;
 }
 
 .byc-modal .byc-date-row input {
 	min-width: 0;
 	flex: 1;
+}
+
+.byc-modal .byc-date-row input[type="date"] {
+	min-width: 9.5em;
 }
 
 .byc-modal .byc-description-input {

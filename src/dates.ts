@@ -52,6 +52,11 @@ export function clampRange(start: string, end: string): { start: string; end: st
 	return start <= end ? { start, end } : { start: end, end: start };
 }
 
+/** Inclusive range: if end is before start, snap end to start. */
+export function endOnOrAfterStart(start: string, end: string): string {
+	return end < start ? start : end;
+}
+
 export function rangesOverlap(
 	aStart: string,
 	aEnd: string,

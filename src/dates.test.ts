@@ -3,6 +3,7 @@ import {
 	addDays,
 	clampRange,
 	daysInMonth,
+	endOnOrAfterStart,
 	formatISODate,
 	isoInYear,
 	monthLabel,
@@ -34,6 +35,8 @@ describe("dates", () => {
 			start: "2026-09-07",
 			end: "2026-09-10",
 		});
+		expect(endOnOrAfterStart("2026-09-10", "2026-09-07")).toBe("2026-09-10");
+		expect(endOnOrAfterStart("2026-09-07", "2026-09-10")).toBe("2026-09-10");
 	});
 
 	it("computes calendar helpers", () => {
