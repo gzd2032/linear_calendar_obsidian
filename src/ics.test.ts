@@ -67,6 +67,87 @@ END:VEVENT`;
 		const events = parseIcs(ics, "Work", "#abc", 2026, 2026, true);
 		expect(events.map((e) => e.start)).toEqual(["2026-01-05", "2026-01-12", "2026-01-14"]);
 	});
+
+	it("expands monthly BYDAY as the nth weekday", () => {
+		const ics = `BEGIN:VEVENT
+UID:second-tue@example.com
+SUMMARY:Planning
+DTSTART;VALUE=DATE:20260113
+DTEND;VALUE=DATE:20260114
+RRULE:FREQ=MONTHLY;BYDAY=2TU;COUNT=3
+END:VEVENT`;
+		const events = parseIcs(ics, "Work", "#abc", 2026, 2026, true);
+		expect(events.map((e) => e.start)).toEqual(["2026-01-13", "2026-02-10", "2026-03-10"]);
+	});
+
+	it("expands numbered BYDAY last weekday and BYMONTHDAY", () => {
+		const lastFriday = `BEGIN:VEVENT
+UID:last-fri@example.com
+SUMMARY:Retro
+DTSTART;VALUE=DATE:20260130
+DTEND;VALUE=DATE:20260131
+RRULE:FREQ=MONTHLY;BYDAY=-1FR;COUNT=2
+END:VEVENT`;
+		expect(parseIcs(lastFriday, "Work", "#abc", 2026, 2026, true).map((e) => e.start)).toEqual([
+			"2026-01-30",
+			"2026-02-27",
+		]);
+
+		const monthDay = `BEGIN:VEVENT
+UID:mid@example.com
+SUMMARY:Payday
+DTSTART;VALUE=DATE:20260115
+DTEND;VALUE=DATE:20260116
+RRULE:FREQ=MONTHLY;BYMONTHDAY=15;COUNT=3
+END:VEVENT`;
+		expect(parseIcs(monthDay, "Work", "#abc", 2026, 2026, true).map((e) => e.start)).toEqual([
+			"2026-01-15",
+			"2026-02-15",
+			"2026-03-15",
+		]);
+
+		const lastDay = `BEGIN:VEVENT
+UID:eom@example.com
+SUMMARY:Close books
+DTSTART;VALUE=DATE:20260131
+DTEND;VALUE=DATE:20260201
+RRULE:FREQ=MONTHLY;BYMONTHDAY=-1;COUNT=3
+END:VEVENT`;
+		expect(parseIcs(lastDay, "Work", "#abc", 2026, 2026, true).map((e) => e.start)).toEqual([
+			"2026-01-31",
+			"2026-02-28",
+			"2026-03-31",
+		]);
+	});
+
+	it("skips STATUS:CANCELLED events and cancelled instances", () => {
+		const cancelled = `BEGIN:VEVENT
+UID:gone@example.com
+SUMMARY:Cancelled trip
+DTSTART;VALUE=DATE:20260301
+DTEND;VALUE=DATE:20260302
+STATUS:CANCELLED
+END:VEVENT`;
+		expect(parseIcs(cancelled, "Work", "#abc", 2026, 2026, true)).toEqual([]);
+
+		const series = `BEGIN:VEVENT
+UID:series@example.com
+SUMMARY:Standup
+DTSTART;VALUE=DATE:20260105
+DTEND;VALUE=DATE:20260106
+RRULE:FREQ=WEEKLY;COUNT=3
+END:VEVENT
+BEGIN:VEVENT
+UID:series@example.com
+RECURRENCE-ID;VALUE=DATE:20260112
+DTSTART;VALUE=DATE:20260112
+STATUS:CANCELLED
+END:VEVENT`;
+		expect(parseIcs(series, "Work", "#abc", 2026, 2026, true).map((e) => e.start)).toEqual([
+			"2026-01-05",
+			"2026-01-19",
+		]);
+	});
 });
 
 describe("normalizeIcsUrl", () => {
