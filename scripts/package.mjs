@@ -27,8 +27,7 @@ execFileSync("zip", ["-r", `${pluginId}.zip`, pluginId], {
 });
 
 console.log(`Packaged ${zipPath}`);
-console.log("Community release assets:");
+console.log("Zip contains only:");
 for (const file of required) {
-	console.log(`  - ${file}`);
+	console.log(`  - ${pluginId}/${file}`);
 }
-console.log(`  - ${zipPath} (optional install zip)`);

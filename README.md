@@ -15,12 +15,12 @@ An Obsidian plugin that shows your whole year at a glance: 12-month rows, pastel
 
 ### Manual install (from a GitHub release)
 
-1. Download `manifest.json`, `main.js`, and `styles.css` from the [latest release](https://github.com/gzd2032/linear_calendar_obsidian/releases/latest).
-2. Create `VaultFolder/.obsidian/plugins/linear-year-calendar/`.
-3. Copy those three files into that folder.
-4. Enable **Linear Year Calendar** under Community plugins.
+1. Download `linear-year-calendar.zip` from the [latest release](https://github.com/gzd2032/linear_calendar_obsidian/releases/latest).
+2. Unzip it into `VaultFolder/.obsidian/plugins/` so you get:
+   `VaultFolder/.obsidian/plugins/linear-year-calendar/{manifest.json,main.js,styles.css}`
+3. Enable **Linear Year Calendar** under Community plugins.
 
-You can also unpack `linear-year-calendar.zip` from the release into the same plugins folder.
+(Ignore GitHub’s auto-generated **Source code** zip/tar — that is the whole repository, not the plugin install package.)
 
 ### Build from source
 
@@ -123,12 +123,11 @@ See [PLAN.md](PLAN.md) for architecture notes and prompt history.
 
 ### Release (community plugin format)
 
-Obsidian installs from a GitHub release whose **tag matches `manifest.json` version exactly** (bare semver, no `v` prefix). Attach these assets:
+Obsidian installs from a GitHub release whose **tag matches `manifest.json` version exactly** (bare semver, no `v` prefix). The workflow attaches **only**:
 
-- `main.js`
-- `manifest.json`
-- `styles.css`
-- (optional) `linear-year-calendar.zip` containing the three files above
+- `linear-year-calendar.zip` → contains `linear-year-calendar/{manifest.json,main.js,styles.css}`
+
+It does not attach the repository. GitHub still shows automatic **Source code** archives on the release page; use the plugin zip above for installs.
 
 Publish a release:
 
@@ -140,7 +139,7 @@ npm version patch   # or minor / major
 git push && git push --tags
 ```
 
-3. Pushing a bare tag such as `1.0.0` runs [.github/workflows/release.yml](.github/workflows/release.yml), which builds, verifies the tag matches the manifest, and publishes the release assets.
+3. Pushing a bare tag such as `1.0.0` runs [.github/workflows/release.yml](.github/workflows/release.yml), which builds and uploads `linear-year-calendar.zip`.
 
 Local packaging without tagging:
 

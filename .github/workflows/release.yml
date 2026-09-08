@@ -22,6 +22,7 @@ jobs:
           cache: npm
 
       - name: Verify bare semver tag
+        id: tag
         run: |
           tag="${GITHUB_REF#refs/tags/}"
           if [[ "$tag" == v* ]]; then
@@ -33,11 +34,10 @@ jobs:
             exit 1
           fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
-        id: tag
 
       - name: Build plugin
         run: |
-          npm ci
+          npm install
           npm run build
 
       - name: Verify manifest version matches tag
@@ -49,29 +49,32 @@ jobs:
             exit 1
           fi
 
-      - name: Package community assets
+      - name: Package plugin folder zip
         run: |
+          rm -rf dist
           mkdir -p dist/linear-year-calendar
           cp main.js manifest.json styles.css dist/linear-year-calendar/
           (cd dist && zip -r linear-year-calendar.zip linear-year-calendar)
+          echo "Zip contents:"
+          unzip -l dist/linear-year-calendar.zip
 
       - name: Attest build provenance
         uses: actions/attest@v4
         with:
-          subject-path: |
-            main.js
-            styles.css
-            dist/linear-year-calendar.zip
+          subject-path: dist/linear-year-calendar.zip
 
-      - name: Create release
+      - name: Create or update release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tag="${{ steps.tag.outputs.tag }}"
-          gh release create "$tag" \
-            --title="$tag" \
-            --generate-notes \
-            main.js \
-            manifest.json \
-            styles.css \
-            dist/linear-year-calendar.zip
+          # Upload only the plugin package (folder with the three install files).
+          # GitHub also shows auto-generated Source code archives; those are not our assets.
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" dist/linear-year-calendar.zip --clobber
+          else
+            gh release create "$tag" \
+              --title="$tag" \
+              --generate-notes \
+              dist/linear-year-calendar.zip
+          fi
