@@ -278,10 +278,10 @@ function paint(): void {
 				paint();
 			},
 			onEventClick: (event, _anchor) => {
-				window.alert(`${event.title}\n${event.start} → ${event.end}`);
+				console.info(`[preview] ${event.title}\n${event.start} → ${event.end}`);
 			},
 			onRangeSelect: (start, end) => {
-				window.alert(`Create event ${start} → ${end}`);
+				console.info(`[preview] Create event ${start} → ${end}`);
 			},
 		},
 	);

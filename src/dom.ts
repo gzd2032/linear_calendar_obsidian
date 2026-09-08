@@ -31,3 +31,17 @@ export function mount(parent: HTMLElement, child: HTMLElement): HTMLElement {
 	parent.appendChild(child);
 	return child;
 }
+
+/** Prefer Obsidian's setCssProps when available (plugin lint); fall back for browser preview. */
+export function setCssProps(el: HTMLElement, props: Record<string, string>): void {
+	const withApi = el as HTMLElement & {
+		setCssProps?: (next: Record<string, string>) => void;
+	};
+	if (typeof withApi.setCssProps === "function") {
+		withApi.setCssProps(props);
+		return;
+	}
+	for (const [key, value] of Object.entries(props)) {
+		el.style.setProperty(key, value);
+	}
+}

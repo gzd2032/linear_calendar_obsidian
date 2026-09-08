@@ -1,5 +1,5 @@
 import { wireCellDrag } from "./drag";
-import { div, el, mount } from "./dom";
+import { div, el, mount, setCssProps } from "./dom";
 import {
 	buildYearGrid,
 	formatEventTooltip,
@@ -339,8 +339,10 @@ function renderColumnBoard(
 		mount(gutter, div("byc-column-month-label", ""));
 		const gutterDays = mount(gutter, div("byc-column-days byc-column-gutter-days"));
 		const rowCount = grid.months[0]?.cells.length ?? 0;
-		gutterDays.style.setProperty("--byc-month-days", String(rowCount));
-		gutterDays.style.setProperty("--byc-lanes", "1");
+		setCssProps(gutterDays, {
+			"--byc-month-days": String(rowCount),
+			"--byc-lanes": "1",
+		});
 		for (const cell of grid.months[0]?.cells ?? []) {
 			const label = mount(gutterDays, div("byc-column-gutter-label"));
 			label.style.gridRow = String(cell.col + 1);
