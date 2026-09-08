@@ -1,4 +1,4 @@
-import { type App, PluginSettingTab, Setting } from "obsidian";
+import { type App, PluginSettingTab, Setting, type SettingDefinitionItem } from "obsidian";
 import { normalizeIcsUrl } from "./ics";
 import type LinearYearCalendarPlugin from "./main";
 import { PASTEL_COLORS, type IcsSource, type PluginSettings, type ViewMode } from "./types";
@@ -28,98 +28,113 @@ export class LinearYearCalendarSettingTab extends PluginSettingTab {
 		this.plugin = plugin;
 	}
 
-	display(): void {
-		const { containerEl } = this;
-		containerEl.empty();
-		new Setting(containerEl).setName("Linear Year Calendar").setHeading();
+	getSettingDefinitions(): SettingDefinitionItem[] {
+		return [
+			{
+				name: "Events folder",
+				desc: "Root for notes. Local calendars use Calendar/<Name>/. Google ICS imports go under Calendar/google/<Name>/.",
+				control: { type: "text", key: "eventsFolder" },
+			},
+			{
+				name: "Default calendar name",
+				desc: "Local planning calendar used when you click or drag to create an event. Google calendars are read-only.",
+				control: { type: "text", key: "defaultCalendar" },
+			},
+			{
+				name: "Week starts on",
+				desc: "Used by Stacked and Col-Stack so weekends line up.",
+				control: {
+					type: "dropdown",
+					key: "weekStartsOn",
+					options: { "0": "Sunday", "1": "Monday" },
+				},
+			},
+			{
+				name: "Default view",
+				control: {
+					type: "dropdown",
+					key: "defaultView",
+					options: {
+						stacked: "Stacked",
+						linear: "Linear",
+						column: "Column",
+						"col-stack": "Col-Stack",
+					},
+				},
+			},
+			{
+				type: "group",
+				heading: "Google Calendar (ICS)",
+				items: [
+					{
+						name: "All-day events only",
+						desc: "Skip timed meetings. Only Google all-day events (trips, birthdays, multi-day blocks) are imported.",
+						control: { type: "toggle", key: "importAllDayOnly" },
+					},
+					{
+						name: "ICS calendars",
+						desc: "In Google Calendar: Settings → the calendar → Integrate calendar → Secret address in iCal format.",
+						render: (setting) => {
+							const host = setting.settingEl.parentElement ?? setting.settingEl;
+							setting.addButton((btn) => {
+								btn.setButtonText("Add").onClick(() => {
+									void (async () => {
+										this.plugin.settings.icsSources.push({
+											id: crypto.randomUUID(),
+											name: "Google Calendar",
+											url: "",
+											color:
+												PASTEL_COLORS[
+													this.plugin.settings.icsSources.length % PASTEL_COLORS.length
+												] ?? "#A9C7E8",
+											enabled: true,
+										});
+										await this.plugin.saveSettings();
+										this.update();
+									})();
+								});
+							});
+							this.plugin.settings.icsSources.forEach((source, index) => {
+								this.renderSource(host, source, index);
+							});
+						},
+					},
+				],
+			},
+		];
+	}
 
-		new Setting(containerEl)
-			.setName("Events folder")
-			.setDesc(
-				"Root for notes. Local calendars use Calendar/<Name>/. Google ICS imports go under Calendar/google/<Name>/.",
-			)
-			.addText((text) => {
-				text.setValue(this.plugin.settings.eventsFolder).onChange(async (value) => {
-					this.plugin.settings.eventsFolder = value.trim() || "Calendar";
-					await this.plugin.saveSettings();
-				});
-			});
+	getControlValue(key: string): unknown {
+		if (key === "weekStartsOn") {
+			return String(this.plugin.settings.weekStartsOn);
+		}
+		return super.getControlValue(key);
+	}
 
-		new Setting(containerEl)
-			.setName("Default calendar name")
-			.setDesc(
-				"Local planning calendar used when you click or drag to create an event. Google calendars are read-only.",
-			)
-			.addText((text) => {
-				text.setValue(this.plugin.settings.defaultCalendar).onChange(async (value) => {
-					this.plugin.settings.defaultCalendar = value.trim() || "Personal";
-					await this.plugin.saveSettings();
-				});
-			});
-
-		new Setting(containerEl)
-			.setName("Week starts on")
-			.setDesc("Used by Stacked and Col-Stack so weekends line up.")
-			.addDropdown((dropdown) => {
-				dropdown
-					.addOption("0", "Sunday")
-					.addOption("1", "Monday")
-					.setValue(String(this.plugin.settings.weekStartsOn))
-					.onChange(async (value) => {
-						this.plugin.settings.weekStartsOn = Number(value);
-						await this.plugin.saveSettings();
-						this.plugin.refreshViews();
-					});
-			});
-
-		new Setting(containerEl)
-			.setName("Default view")
-			.addDropdown((dropdown) => {
-				dropdown
-					.addOption("stacked", "Stacked")
-					.addOption("linear", "Linear")
-					.addOption("column", "Column")
-					.addOption("col-stack", "Col-Stack")
-					.setValue(this.plugin.settings.defaultView)
-					.onChange(async (value) => {
-						this.plugin.settings.defaultView = parseViewMode(value);
-						await this.plugin.saveSettings();
-						this.plugin.refreshViews();
-					});
-			});
-
-		new Setting(containerEl).setName("Google Calendar (ICS)").setHeading();
-		containerEl.createEl("p", {
-			text: "In Google Calendar: Settings → the calendar → Integrate calendar → Secret address in iCal format. Paste that URL here, then Refresh from the calendar toolbar.",
-		});
-
-		new Setting(containerEl)
-			.setName("All-day events only")
-			.setDesc("Skip timed meetings. Only Google all-day events (trips, birthdays, multi-day blocks) are imported.")
-			.addToggle((toggle) => {
-				toggle.setValue(this.plugin.settings.importAllDayOnly).onChange(async (value) => {
-					this.plugin.settings.importAllDayOnly = value;
-					await this.plugin.saveSettings();
-				});
-			});
-
-		new Setting(containerEl).setName("Add ICS calendar").addButton((btn) => {
-			btn.setButtonText("Add").onClick(async () => {
-				this.plugin.settings.icsSources.push({
-					id: crypto.randomUUID(),
-					name: "Google Calendar",
-					url: "",
-					color: PASTEL_COLORS[this.plugin.settings.icsSources.length % PASTEL_COLORS.length] ?? "#A9C7E8",
-					enabled: true,
-				});
-				await this.plugin.saveSettings();
-				this.display();
-			});
-		});
-
-		this.plugin.settings.icsSources.forEach((source, index) => {
-			this.renderSource(containerEl, source, index);
-		});
+	async setControlValue(key: string, value: unknown): Promise<void> {
+		if (key === "weekStartsOn") {
+			this.plugin.settings.weekStartsOn = Number(value) === 1 ? 1 : 0;
+			await this.plugin.saveSettings();
+			this.plugin.refreshViews();
+			return;
+		}
+		if (key === "eventsFolder" && typeof value === "string") {
+			this.plugin.settings.eventsFolder = value.trim() || "Calendar";
+			await this.plugin.saveSettings();
+			return;
+		}
+		if (key === "defaultCalendar" && typeof value === "string") {
+			this.plugin.settings.defaultCalendar = value.trim() || "Personal";
+			await this.plugin.saveSettings();
+			return;
+		}
+		if (key === "defaultView" && typeof value === "string") {
+			this.plugin.settings.defaultView = parseViewMode(value);
+			await this.plugin.saveSettings();
+			this.plugin.refreshViews();
+			return;
+		}
+		await super.setControlValue(key, value);
 	}
 
 	private renderSource(containerEl: HTMLElement, source: IcsSource, index: number): void {
@@ -133,12 +148,15 @@ export class LinearYearCalendarSettingTab extends PluginSettingTab {
 		});
 
 		new Setting(containerEl).setName("ICS URL").addText((text) => {
-			text.setPlaceholder("https://calendar.google.com/calendar/ical/…").setValue(source.url).onChange(async (value) => {
-				const next = normalizeIcsUrl(value);
-				source.url = next;
-				if (next !== value) text.setValue(next);
-				await this.plugin.saveSettings();
-			});
+			text
+				.setPlaceholder("https://calendar.google.com/calendar/ical/…")
+				.setValue(source.url)
+				.onChange(async (value) => {
+					const next = normalizeIcsUrl(value);
+					source.url = next;
+					if (next !== value) text.setValue(next);
+					await this.plugin.saveSettings();
+				});
 			text.inputEl.addClass("byc-ics-url-input");
 		});
 
@@ -158,10 +176,10 @@ export class LinearYearCalendarSettingTab extends PluginSettingTab {
 				});
 			})
 			.addButton((btn) => {
-				btn.setButtonText("Remove").setWarning().onClick(async () => {
+				btn.setButtonText("Remove").setDestructive().onClick(async () => {
 					this.plugin.settings.icsSources.splice(index, 1);
 					await this.plugin.saveSettings();
-					this.display();
+					this.update();
 				});
 			});
 	}

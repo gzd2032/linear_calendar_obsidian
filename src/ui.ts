@@ -107,7 +107,7 @@ export function renderCalendar(
 	}
 
 	if (state.scrollToToday && state.year === todayYear) {
-		requestAnimationFrame(() => {
+		window.requestAnimationFrame(() => {
 			root
 				.querySelector<HTMLElement>(".byc-cell.is-today")
 				?.scrollIntoView({ block: "center", inline: "center", behavior: "smooth" });

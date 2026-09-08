@@ -16,15 +16,15 @@ export default class LinearYearCalendarPlugin extends Plugin {
 		});
 
 		this.addCommand({
-			id: "open-linear-year-calendar",
-			name: "Open Linear Year Calendar",
+			id: "open-year-calendar",
+			name: "Open year calendar",
 			callback: () => {
 				void this.activateView();
 			},
 		});
 
 		this.addCommand({
-			id: "refresh-ics-calendars",
+			id: "refresh-ics",
 			name: "Refresh ICS calendars",
 			callback: () => {
 				void this.refreshIcs();
@@ -38,12 +38,12 @@ export default class LinearYearCalendarPlugin extends Plugin {
 		const { workspace } = this.app;
 		const existing = workspace.getLeavesOfType(VIEW_TYPE)[0];
 		if (existing) {
-			workspace.revealLeaf(existing);
+			void workspace.revealLeaf(existing);
 			return;
 		}
 		const leaf = workspace.getLeaf("tab");
 		await leaf.setViewState({ type: VIEW_TYPE, active: true });
-		workspace.revealLeaf(leaf);
+		void workspace.revealLeaf(leaf);
 	}
 
 	refreshViews(): void {

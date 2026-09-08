@@ -1,10 +1,12 @@
 import { Notice, TFile, type App } from "obsidian";
 import { googleCalendarDayUrl, isGoogleEvent, sanitizeCalendarName } from "./calendar-paths";
+import { ConfirmModal } from "./confirm-modal";
 import { div, el, mount } from "./dom";
 import { endOnOrAfterStart, eventDayCount, formatShortDate } from "./grid";
 import type { CalendarEvent } from "./types";
 import { EventCreateModal, type EventDraft } from "./modal";
 import { readNoteDescription, updateEventNote } from "./notes";
+import { externalIcon, labeledIconButton, pencilIcon, trashIcon } from "./ui-helpers";
 
 const DESC_PREVIEW_LEN = 120;
 
@@ -98,51 +100,35 @@ export class EventDetailPopover {
 		const footer = mount(pop, div("byc-popover-footer"));
 
 		if (google) {
-			const openGoogle = mount(
+			const openGoogle = labeledIconButton(
 				footer,
-				el("button", {
-					cls: "byc-popover-edit",
-					type: "button",
-					attr: {
-						"aria-label": "Open day in Google Calendar",
-						title: "Open day in Google Calendar",
-					},
-				}),
+				"Google",
+				"byc-popover-edit",
+				externalIcon(),
 			);
-			openGoogle.innerHTML = `${externalIcon()}<span>Google</span>`;
+			openGoogle.setAttribute("aria-label", "Open day in Google Calendar");
+			openGoogle.title = "Open day in Google Calendar";
 			openGoogle.addEventListener("click", () => {
 				this.openGoogleDay(event);
 			});
 		} else {
-			const del = mount(
-				footer,
-				el("button", {
-					cls: "byc-popover-delete",
-					type: "button",
-					attr: { "aria-label": "Delete event", title: "Delete event" },
-				}),
-			);
-			del.innerHTML = `${trashIcon()}<span>Delete</span>`;
+			const del = labeledIconButton(footer, "Delete", "byc-popover-delete", trashIcon());
+			del.setAttribute("aria-label", "Delete event");
+			del.title = "Delete event";
 			del.addEventListener("click", () => {
 				void this.deleteEvent(event);
 			});
 
-			const edit = mount(
-				footer,
-				el("button", {
-					cls: "byc-popover-edit",
-					type: "button",
-					attr: { "aria-label": "Edit event", title: "Edit event (E)" },
-				}),
-			);
-			edit.innerHTML = `${pencilIcon()}<span>Edit</span>`;
+			const edit = labeledIconButton(footer, "Edit", "byc-popover-edit", pencilIcon());
+			edit.setAttribute("aria-label", "Edit event");
+			edit.title = "Edit event (E)";
 			edit.addEventListener("click", () => {
 				void this.openEdit(event);
 			});
 		}
 
 		this.position(pop, anchor);
-		requestAnimationFrame(() => pop.classList.add("is-open"));
+		window.requestAnimationFrame(() => pop.classList.add("is-open"));
 
 		this.onDocPointer = (ev: PointerEvent) => {
 			if (!this.root) return;
@@ -233,7 +219,7 @@ export class EventDetailPopover {
 		pop.style.top = `${top}px`;
 		pop.style.width = `${popW}px`;
 
-		requestAnimationFrame(() => {
+		window.requestAnimationFrame(() => {
 			const h = pop.offsetHeight;
 			if (top + h > window.innerHeight - 12) {
 				const above = rect.top - h - 8;
@@ -258,28 +244,30 @@ export class EventDetailPopover {
 				description,
 			},
 			calendars,
-			async (draft: EventDraft) => {
-				if (!event.path) return;
-				try {
-					await updateEventNote(
-						this.app,
-						event.path,
-						{
-							title: draft.title.trim() || "Untitled",
-							start: draft.start,
-							end: endOnOrAfterStart(draft.start, draft.end),
-							color: draft.color,
-							calendar: sanitizeCalendarName(draft.calendar || event.calendar),
-							description: draft.description,
-						},
-						this.getEventsFolder(),
-					);
-					new Notice("Event updated");
-					this.onChanged();
-				} catch (error) {
-					console.error(error);
-					new Notice("Could not update event");
-				}
+			(draft: EventDraft) => {
+				void (async () => {
+					if (!event.path) return;
+					try {
+						await updateEventNote(
+							this.app,
+							event.path,
+							{
+								title: draft.title.trim() || "Untitled",
+								start: draft.start,
+								end: endOnOrAfterStart(draft.start, draft.end),
+								color: draft.color,
+								calendar: sanitizeCalendarName(draft.calendar || event.calendar),
+								description: draft.description,
+							},
+							this.getEventsFolder(),
+						);
+						new Notice("Event updated");
+						this.onChanged();
+					} catch (error) {
+						console.error(error);
+						new Notice("Could not update event");
+					}
+				})();
 			},
 			"Edit event",
 		).open();
@@ -299,17 +287,17 @@ export class EventDetailPopover {
 			new Notice("Event note not found");
 			return;
 		}
-		const ok = window.confirm(`Delete “${event.title}”?`);
-		if (!ok) return;
-		try {
-			await this.app.fileManager.trashFile(file);
-			new Notice("Event deleted");
-			this.close();
-			this.onChanged();
-		} catch (error) {
-			console.error(error);
-			new Notice("Could not delete event");
-		}
+		new ConfirmModal(this.app, `Delete “${event.title}”?`, async () => {
+			try {
+				await this.app.fileManager.trashFile(file);
+				new Notice("Event deleted");
+				this.close();
+				this.onChanged();
+			} catch (error) {
+				console.error(error);
+				new Notice("Could not delete event");
+			}
+		}).open();
 	}
 }
 
@@ -318,16 +306,4 @@ function shortenDescription(text: string): string {
 	if (!compact) return "";
 	if (compact.length <= DESC_PREVIEW_LEN) return compact;
 	return `${compact.slice(0, DESC_PREVIEW_LEN - 1).trimEnd()}…`;
-}
-
-function trashIcon(): string {
-	return `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>`;
-}
-
-function pencilIcon(): string {
-	return `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`;
-}
-
-function externalIcon(): string {
-	return `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 4h6v6"/><path d="M10 14L20 4"/><path d="M20 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h5"/></svg>`;
 }

@@ -122,33 +122,29 @@ export class YearCalendarView extends ItemView {
 					const cell = this.contentEl.querySelector<HTMLElement>(".byc-cell.is-today");
 					cell?.scrollIntoView({ block: "center", inline: "center", behavior: "smooth" });
 				},
-				onModeChange: async (mode) => {
+				onModeChange: (mode) => {
 					this.mode = mode;
 					this.plugin.settings.defaultView = mode;
-					await this.plugin.saveSettings();
-					this.render();
+					void this.plugin.saveSettings().then(() => this.render());
 				},
 				onSearchChange: (query) => {
 					this.search = query;
 					this.render();
 				},
-				onToggleWideLayout: async () => {
+				onToggleWideLayout: () => {
 					this.plugin.settings.wideLayout = !this.plugin.settings.wideLayout;
-					await this.plugin.saveSettings();
-					this.render();
+					void this.plugin.saveSettings().then(() => this.render());
 				},
-				onToggleCalendar: async (name) => {
+				onToggleCalendar: (name) => {
 					const hidden = new Set(this.plugin.settings.hiddenCalendars);
 					if (hidden.has(name)) hidden.delete(name);
 					else hidden.add(name);
 					this.plugin.settings.hiddenCalendars = [...hidden];
-					await this.plugin.saveSettings();
-					this.render();
+					void this.plugin.saveSettings().then(() => this.render());
 				},
-				onShowAllCalendars: async () => {
+				onShowAllCalendars: () => {
 					this.plugin.settings.hiddenCalendars = [];
-					await this.plugin.saveSettings();
-					this.render();
+					void this.plugin.saveSettings().then(() => this.render());
 				},
 				onEventClick: (event, anchor) => {
 					this.popover?.open(event, anchor);
@@ -181,24 +177,26 @@ export class YearCalendarView extends ItemView {
 				description: "",
 			},
 			calendars,
-			async (draft) => {
-				if (!parseISODate(draft.start) || !parseISODate(draft.end)) {
-					new Notice("Use YYYY-MM-DD dates.");
-					return;
-				}
-				const calendar = sanitizeCalendarName(
-					draft.calendar || this.plugin.settings.defaultCalendar,
-				);
-				const file = await createEventNote(this.app, this.plugin.settings.eventsFolder, {
-					title: draft.title,
-					start: draft.start,
-					end: endOnOrAfterStart(draft.start, draft.end),
-					color: draft.color,
-					calendar,
-					description: draft.description,
-				});
-				new Notice(`Created ${file.basename}`);
-				this.render();
+			(draft) => {
+				void (async () => {
+					if (!parseISODate(draft.start) || !parseISODate(draft.end)) {
+						new Notice("Use YYYY-MM-DD dates.");
+						return;
+					}
+					const calendar = sanitizeCalendarName(
+						draft.calendar || this.plugin.settings.defaultCalendar,
+					);
+					const file = await createEventNote(this.app, this.plugin.settings.eventsFolder, {
+						title: draft.title,
+						start: draft.start,
+						end: endOnOrAfterStart(draft.start, draft.end),
+						color: draft.color,
+						calendar,
+						description: draft.description,
+					});
+					new Notice(`Created ${file.basename}`);
+					this.render();
+				})();
 			},
 		).open();
 	}
