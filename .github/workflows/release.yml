@@ -37,7 +37,7 @@ jobs:
 
       - name: Build plugin
         run: |
-          npm install
+          npm ci
           npm run build
 
       - name: Verify manifest version matches tag

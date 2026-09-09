@@ -143,7 +143,9 @@ npm version patch   # or minor / major
 git push && git push --tags
 ```
 
-3. Pushing a bare tag such as `1.0.1` runs [.github/workflows/release.yml](.github/workflows/release.yml), which builds and uploads `main.js`, `manifest.json`, and `styles.css`.
+3. Pushing a bare tag such as `1.0.1` runs [.github/workflows/release.yml](.github/workflows/release.yml), which runs `npm ci` on Node 24, builds from the tagged commit, and uploads `main.js`, `manifest.json`, and `styles.css`.
+
+**Do not** replace those release assets by hand after CI publishes them (no local `gh release upload` / drag-and-drop). Obsidian’s release scanner rebuilds from source and expects the uploaded `main.js` to match CI output byte-for-byte.
 
 Local packaging (optional zip for your own use, not uploaded by CI):
 
