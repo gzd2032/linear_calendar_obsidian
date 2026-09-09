@@ -1,17 +1,31 @@
+.byc-root,
+.byc-popover {
+	/* Calendar chrome maps fully to Obsidian theme tokens (light + dark). */
+	--byc-bg: var(--background-primary);
+	--byc-header: var(--background-secondary);
+	--byc-cell: var(--background-primary-alt, var(--background-primary));
+	--byc-weekend: var(--background-secondary-alt, var(--background-secondary));
+	--byc-line: var(--background-modifier-border);
+	--byc-text: var(--text-normal);
+	--byc-muted: var(--text-muted);
+	--byc-faint: var(--text-faint, var(--text-muted));
+	--byc-today: var(--interactive-accent);
+	--byc-today-text: var(--text-accent, var(--interactive-accent));
+	--byc-today-wash: color-mix(in srgb, var(--interactive-accent) 14%, var(--background-primary));
+	--byc-select: color-mix(in srgb, var(--interactive-accent) 20%, var(--background-primary));
+	--byc-accent: var(--interactive-accent);
+	--byc-accent-hover: var(--interactive-accent-hover, var(--interactive-accent));
+	--byc-on-accent: var(--text-on-accent, #fff);
+	--byc-surface: var(--background-primary);
+	--byc-elevated: var(--modal-background, var(--background-primary));
+	--byc-form: var(--background-modifier-form-field, var(--background-primary));
+	--byc-hover: var(--background-modifier-hover);
+	--byc-danger: var(--text-error, var(--color-red));
+	--byc-shadow: var(--shadow-s, 0 8px 28px rgba(0, 0, 0, 0.12));
+	--byc-shadow-l: var(--shadow-l, 0 12px 40px rgba(0, 0, 0, 0.18));
+}
+
 .byc-root {
-	--byc-bg: #f3f3f1;
-	--byc-header: #f7f7f5;
-	--byc-cell: #fbf9f4;
-	--byc-weekend: #eef0f3;
-	--byc-line: #e1e1db;
-	--byc-text: #2b2b2b;
-	--byc-muted: #8b8b84;
-	--byc-today: #e8904a;
-	--byc-today-text: #c7783a;
-	--byc-today-wash: #f7f0e8;
-	--byc-select: #f3e6d8;
-	--byc-accent: #6b5b95;
-	--byc-shadow: 0 8px 28px rgba(40, 40, 30, 0.12);
 	--byc-event-inset-x: 4px;
 	height: 100%;
 	display: flex;
@@ -77,17 +91,17 @@
 .byc-icon-btn:hover,
 .byc-btn:hover,
 .byc-chip:hover {
-	background: rgba(0, 0, 0, 0.05);
+	background: var(--byc-hover);
 }
 
 .byc-today-btn {
 	color: var(--byc-today-text);
 	border: 1px solid color-mix(in srgb, var(--byc-today) 35%, transparent);
-	background: color-mix(in srgb, var(--byc-today) 12%, #fff);
+	background: color-mix(in srgb, var(--byc-today) 12%, var(--byc-surface));
 }
 
 .byc-today-btn:hover {
-	background: color-mix(in srgb, var(--byc-today) 20%, #fff);
+	background: color-mix(in srgb, var(--byc-today) 20%, var(--byc-surface));
 	color: var(--byc-today-text);
 }
 
@@ -99,23 +113,23 @@
 }
 
 .byc-btn-accent {
-	color: #fff;
+	color: var(--byc-on-accent);
 	background: var(--byc-accent);
 }
 
 .byc-btn-accent:hover {
-	background: #5a4b80;
-	color: #fff;
+	background: var(--byc-accent-hover);
+	color: var(--byc-on-accent);
 }
 
 .byc-btn-accent.is-filtering {
-	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+	box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--byc-on-accent) 25%, transparent);
 }
 
 .byc-search-input {
 	width: 180px;
 	border: 1px solid var(--byc-line);
-	background: #fff;
+	background: var(--byc-form);
 	border-radius: 10px;
 	padding: 6px 10px;
 	font: inherit;
@@ -137,7 +151,7 @@
 }
 
 .byc-width-btn.is-active {
-	background: rgba(0, 0, 0, 0.06);
+	background: var(--byc-hover);
 }
 
 .byc-menu {
@@ -145,7 +159,8 @@
 	top: calc(100% + 6px);
 	right: 0;
 	min-width: 240px;
-	background: #fff;
+	background: var(--byc-elevated);
+	border: 1px solid var(--byc-line);
 	border-radius: 14px;
 	box-shadow: var(--byc-shadow);
 	padding: 8px;
@@ -197,9 +212,9 @@ button.byc-mode-option.is-active {
 }
 
 button.byc-mode-option:hover {
-	background: color-mix(in srgb, #4a7ab5 12%, #fff);
-	background-color: color-mix(in srgb, #4a7ab5 12%, #fff);
-	color: #1a3a6b;
+	background: color-mix(in srgb, var(--byc-accent) 14%, var(--byc-surface));
+	background-color: color-mix(in srgb, var(--byc-accent) 14%, var(--byc-surface));
+	color: var(--byc-today-text);
 	border-radius: 8px;
 }
 
@@ -214,7 +229,7 @@ button.byc-mode-option:hover {
 	width: 100%;
 	margin-top: 4px;
 	border: 0;
-	background: #f7f6f2;
+	background: var(--byc-header);
 	border-radius: 8px;
 	padding: 8px 10px;
 	cursor: pointer;
@@ -226,7 +241,7 @@ button.byc-mode-option:hover {
 }
 
 .byc-menu-action:hover {
-	background: #efece4;
+	background: var(--byc-hover);
 }
 
 .byc-filter-section {
@@ -235,7 +250,7 @@ button.byc-mode-option:hover {
 	font-weight: 600;
 	letter-spacing: 0.04em;
 	text-transform: uppercase;
-	color: #8a8a84;
+	color: var(--byc-muted);
 }
 
 .byc-filter-row {
@@ -268,7 +283,8 @@ button.byc-mode-option:hover {
 	gap: 8px;
 	margin: 24px 12px;
 	padding: 20px 22px;
-	background: #fff;
+	background: var(--byc-elevated);
+	border: 1px solid var(--byc-line);
 	border-radius: 14px;
 	box-shadow: var(--byc-shadow);
 	max-width: 360px;
@@ -291,12 +307,12 @@ button.byc-mode-option:hover {
 	pointer-events: none;
 	padding: 6px 10px;
 	border-radius: 999px;
-	background: #1f1f1f;
-	color: #fff;
+	background: var(--byc-text);
+	color: var(--byc-bg);
 	font-size: 12px;
 	font-weight: 600;
 	letter-spacing: 0.01em;
-	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+	box-shadow: var(--byc-shadow-l);
 	white-space: nowrap;
 }
 
@@ -438,10 +454,10 @@ button.byc-mode-option:hover {
 	padding: 0;
 	font-size: 12px;
 	font-weight: 700;
-	color: #4a4a48;
+	color: var(--byc-text);
 	background: var(--byc-cell);
 	border-right: 1px solid var(--byc-line);
-	box-shadow: 6px 0 10px -8px rgba(40, 40, 30, 0.25);
+	box-shadow: 6px 0 10px -8px color-mix(in srgb, var(--byc-text) 25%, transparent);
 	text-align: center;
 }
 
@@ -499,7 +515,7 @@ button.byc-mode-option:hover {
 	text-align: center;
 	font-size: 10px;
 	font-weight: 600;
-	color: #4a4a48;
+	color: var(--byc-text);
 	padding: 2px 0;
 }
 
@@ -620,19 +636,19 @@ button.byc-mode-option:hover {
 	padding: 2px 6px;
 	font-size: 11px;
 	font-weight: 600;
-	color: #3a322c;
+	color: var(--byc-text);
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	cursor: pointer;
-	box-shadow: 0 1px 0 rgba(0, 0, 0, 0.05);
+	box-shadow: 0 1px 0 color-mix(in srgb, var(--byc-text) 8%, transparent);
 	transition: filter 140ms ease, transform 140ms ease, box-shadow 140ms ease;
 }
 
 .byc-event:hover {
 	filter: brightness(1.04);
 	transform: translateY(-1px);
-	box-shadow: 0 3px 8px rgba(40, 40, 30, 0.12);
+	box-shadow: var(--byc-shadow);
 }
 
 /* Column view: months side by side, days top→bottom, events in-column */
@@ -795,18 +811,19 @@ button.byc-mode-option:hover {
 }
 
 .byc-color-dot.is-active {
-	border-color: #222;
+	border-color: var(--byc-text);
 }
 
 /* Event detail popover (Birdseye-style) */
 .byc-popover {
 	position: fixed;
 	z-index: 1000;
-	background: #fff;
+	background: var(--byc-elevated);
+	border: 1px solid var(--byc-line);
 	border-radius: 18px;
-	box-shadow: 0 12px 40px rgba(40, 40, 30, 0.18);
+	box-shadow: var(--byc-shadow-l);
 	padding: 14px 14px 12px;
-	color: #2b2b2b;
+	color: var(--byc-text);
 	font-family: var(--font-interface, var(--font-text, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif));
 	opacity: 0;
 	transform: translateY(4px) scale(0.98);
@@ -862,7 +879,7 @@ button.byc-mode-option:hover {
 }
 
 .byc-popover-title:focus-visible {
-	outline: 2px solid color-mix(in srgb, var(--byc-today) 70%, #333);
+	outline: 2px solid color-mix(in srgb, var(--byc-today) 70%, var(--byc-text));
 	outline-offset: 2px;
 }
 
@@ -877,7 +894,7 @@ button.byc-popover-close {
 	outline: none;
 	box-shadow: none;
 	background: transparent;
-	color: #a3a39c;
+	color: var(--byc-faint);
 	font-size: 22px;
 	line-height: 1;
 	cursor: pointer;
@@ -888,8 +905,8 @@ button.byc-popover-close {
 }
 
 button.byc-popover-close:hover {
-	background: rgba(0, 0, 0, 0.05);
-	color: #666;
+	background: var(--byc-hover);
+	color: var(--byc-muted);
 	border: none;
 	box-shadow: none;
 }
@@ -906,7 +923,7 @@ button.byc-popover-close:active {
 .byc-popover-body {
 	margin-top: 8px;
 	padding-left: 24px;
-	color: #8b8b84;
+	color: var(--byc-muted);
 	font-size: 13px;
 	line-height: 1.45;
 }
@@ -921,24 +938,24 @@ button.byc-popover-close:active {
 	font-size: 11px;
 	text-transform: uppercase;
 	letter-spacing: 0.04em;
-	color: #a3a39c;
+	color: var(--byc-faint);
 	margin-bottom: 2px;
 }
 
 .byc-popover-date-value {
-	color: #6b6b66;
+	color: var(--byc-muted);
 	font-size: 13px;
 }
 
 .byc-popover-source {
 	margin-top: 8px;
 	font-size: 12px;
-	color: #8a8a84;
+	color: var(--byc-muted);
 }
 
 .byc-popover-desc {
 	margin-top: 8px;
-	color: #6b6b66;
+	color: var(--byc-muted);
 	font-size: 12px;
 	line-height: 1.4;
 	display: -webkit-box;
@@ -954,7 +971,7 @@ button.byc-popover-close:active {
 	gap: 12px;
 	margin-top: 14px;
 	padding-top: 12px;
-	border-top: 1px solid #ecece8;
+	border-top: 1px solid var(--byc-line);
 }
 
 .byc-popover-delete {
@@ -966,7 +983,7 @@ button.byc-popover-close:active {
 	border: 0;
 	outline: none;
 	background: transparent;
-	color: #d4534b;
+	color: var(--byc-danger);
 	font: inherit;
 	font-size: 13px;
 	font-weight: 600;
@@ -976,11 +993,11 @@ button.byc-popover-close:active {
 }
 
 .byc-popover-delete:hover {
-	background: rgba(212, 83, 75, 0.1);
+	background: color-mix(in srgb, var(--byc-danger) 12%, transparent);
 }
 
 .byc-popover-delete:focus-visible {
-	outline: 2px solid rgba(212, 83, 75, 0.45);
+	outline: 2px solid color-mix(in srgb, var(--byc-danger) 45%, transparent);
 	outline-offset: 2px;
 }
 
@@ -992,8 +1009,8 @@ button.byc-popover-close:active {
 	min-height: 36px;
 	border: 0;
 	outline: none;
-	background: #1f1f1f;
-	color: #fff;
+	background: var(--byc-text);
+	color: var(--byc-bg);
 	font: inherit;
 	font-size: 13px;
 	font-weight: 600;
@@ -1004,11 +1021,11 @@ button.byc-popover-close:active {
 }
 
 .byc-popover-edit:hover {
-	background: #e8e8e8;
-	color: #1f1f1f;
+	background: var(--byc-hover);
+	color: var(--byc-text);
 }
 
 .byc-popover-edit:focus-visible {
-	outline: 2px solid #1f1f1f;
+	outline: 2px solid var(--byc-text);
 	outline-offset: 2px;
 }
