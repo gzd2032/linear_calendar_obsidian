@@ -15,6 +15,7 @@ export class EventDetailPopover {
 	private openEventId: string | null = null;
 	private openToken = 0;
 	private activeEvent: CalendarEvent | null = null;
+	private anchor: HTMLElement | null = null;
 	private onDocPointer: ((ev: PointerEvent) => void) | null = null;
 	private onKeyDown: ((ev: KeyboardEvent) => void) | null = null;
 
@@ -30,6 +31,22 @@ export class EventDetailPopover {
 		return this.root !== null && this.openEventId === eventId;
 	}
 
+	/** Event id currently shown, or null when closed. */
+	getOpenEventId(): string | null {
+		return this.root ? this.openEventId : null;
+	}
+
+	/**
+	 * Keep the open popover after a calendar re-render: refresh event data and
+	 * reposition against the new event-bar node.
+	 */
+	reanchor(event: CalendarEvent, anchor: HTMLElement): void {
+		if (!this.root || this.openEventId !== event.id) return;
+		this.activeEvent = event;
+		this.anchor = anchor;
+		this.position(this.root, anchor);
+	}
+
 	open(event: CalendarEvent, anchor: HTMLElement): void {
 		if (this.isOpenFor(event.id)) {
 			this.close();
@@ -39,6 +56,7 @@ export class EventDetailPopover {
 		this.close();
 		this.openEventId = event.id;
 		this.activeEvent = event;
+		this.anchor = anchor;
 		const token = ++this.openToken;
 		const google = isGoogleEvent(event, this.getEventsFolder());
 
@@ -137,7 +155,8 @@ export class EventDetailPopover {
 		this.onDocPointer = (ev: PointerEvent) => {
 			if (!this.root) return;
 			const target = ev.target as Node | null;
-			if (this.root.contains(target) || anchor.contains(target)) return;
+			if (this.root.contains(target)) return;
+			if (this.anchor?.contains(target)) return;
 			this.close();
 		};
 		this.onKeyDown = (ev: KeyboardEvent) => {
@@ -168,12 +187,12 @@ export class EventDetailPopover {
 
 		if (event.path) {
 			void readNoteDescription(this.app, event.path).then((description) => {
-				if (token !== this.openToken || !this.root) return;
+				if (token !== this.openToken || !this.root || !this.anchor) return;
 				const preview = shortenDescription(description);
 				if (!preview) return;
 				descEl.textContent = preview;
 				descEl.hidden = false;
-				this.position(pop, anchor);
+				this.position(pop, this.anchor);
 			});
 		}
 	}
@@ -191,6 +210,7 @@ export class EventDetailPopover {
 		this.root = null;
 		this.openEventId = null;
 		this.activeEvent = null;
+		this.anchor = null;
 	}
 
 	private openNote(event: CalendarEvent): void {

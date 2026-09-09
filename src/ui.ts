@@ -53,12 +53,25 @@ export interface CalendarUIHandlers {
 	onRefresh?: () => void;
 }
 
+const boardScrollMemory = new WeakMap<
+	HTMLElement,
+	{ year: number; mode: ViewMode; scrollTop: number; scrollLeft: number }
+>();
+
 export function renderCalendar(
 	root: HTMLElement,
 	state: CalendarUIState,
 	handlers: CalendarUIHandlers,
 ): void {
 	const restoreSearchFocus = document.activeElement?.classList.contains("byc-search-input");
+	const previous = boardScrollMemory.get(root);
+	const oldBoard = root.querySelector<HTMLElement>(".byc-board");
+	const savedScroll =
+		oldBoard && previous && previous.year === state.year && previous.mode === state.mode
+			? { top: oldBoard.scrollTop, left: oldBoard.scrollLeft }
+			: null;
+	const restoreScroll = Boolean(savedScroll) && !state.scrollToToday;
+
 	root.replaceChildren();
 	root.classList.add("byc-root");
 	root.classList.toggle("is-wide", state.wideLayout);
@@ -112,13 +125,27 @@ export function renderCalendar(
 		);
 	}
 
-	if (state.scrollToToday && state.year === todayYear) {
+	if (restoreScroll && savedScroll) {
+		board.scrollTop = savedScroll.top;
+		board.scrollLeft = savedScroll.left;
+		window.requestAnimationFrame(() => {
+			board.scrollTop = savedScroll.top;
+			board.scrollLeft = savedScroll.left;
+		});
+	} else if (state.scrollToToday && state.year === todayYear) {
 		window.requestAnimationFrame(() => {
 			root
 				.querySelector<HTMLElement>(".byc-cell.is-today")
 				?.scrollIntoView({ block: "center", inline: "center", behavior: "smooth" });
 		});
 	}
+
+	boardScrollMemory.set(root, {
+		year: state.year,
+		mode: state.mode,
+		scrollTop: board.scrollTop,
+		scrollLeft: board.scrollLeft,
+	});
 
 	if (restoreSearchFocus) {
 		const searchInput = root.querySelector<HTMLInputElement>(".byc-search-input");
@@ -476,6 +503,7 @@ function mountEventBar(
 		bar.style.gridColumn = `${segment.startCol + 1} / ${segment.endCol + 2}`;
 		bar.style.gridRow = String(segment.lane + 2);
 	}
+	bar.dataset.eventId = segment.event.id;
 	bar.style.background = segment.event.color;
 	bar.style.color = contrastingTextColor(segment.event.color);
 	bar.textContent = segment.event.title;

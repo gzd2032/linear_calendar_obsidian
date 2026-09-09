@@ -93,7 +93,7 @@ export class YearCalendarView extends ItemView {
 	}
 
 	render(): void {
-		this.popover?.close();
+		const openEventId = this.popover?.getOpenEventId() ?? null;
 		const events = listEventNotes(this.app, this.plugin.settings.eventsFolder).filter(
 			(event) =>
 				this.plugin.settings.googleHolidaysEnabled || event.calendar !== GOOGLE_HOLIDAYS_NAME,
@@ -172,6 +172,21 @@ export class YearCalendarView extends ItemView {
 				},
 			},
 		);
+		this.syncOpenPopover(openEventId, events);
+	}
+
+	/** Keep popover open across re-renders; close if the event bar is gone. */
+	private syncOpenPopover(openEventId: string | null, events: CalendarEvent[]): void {
+		if (!openEventId || !this.popover) return;
+		const event = events.find((item) => item.id === openEventId);
+		const bar = this.contentEl.querySelector<HTMLElement>(
+			`.byc-event[data-event-id="${CSS.escape(openEventId)}"]`,
+		);
+		if (!event || !bar) {
+			this.popover.close();
+			return;
+		}
+		this.popover.reanchor(event, bar);
 	}
 
 	private openCreateModal(start: string, end: string, events: CalendarEvent[]): void {
