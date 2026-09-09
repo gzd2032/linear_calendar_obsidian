@@ -53,4 +53,14 @@ export default defineConfig([
 			"obsidianmd/prefer-create-el": "warn",
 		},
 	},
+	{
+		files: ["src/settings.ts"],
+		rules: {
+			// Compact ICS list must be imperative; declarative sibling rows are discarded.
+			"obsidianmd/settings-tab/prefer-setting-definitions": "off",
+			"obsidianmd/settings-tab/prefer-update-over-display": "off",
+			"obsidianmd/settings-tab/no-deprecated-display": "off",
+			"@typescript-eslint/no-deprecated": "off",
+		},
+	},
 ]);

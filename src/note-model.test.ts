@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	buildNoteBody,
+	assignEventFrontmatter,
 	eventFromFrontmatter,
 	extractNoteDescription,
 	staleIcsNotes,
@@ -38,9 +39,47 @@ More`;
 			description: "Pack bags",
 			icsUid: "abc",
 		});
-		expect(body).toContain('calendar: "Say \\"hi\\""');
+		expect(body).toContain(`calendar: ${JSON.stringify('Say "hi"')}`);
 		expect(body).toContain("ics-uid: abc");
 		expect(body).toContain("Pack bags");
+	});
+
+	it("writes a Properties-safe fence with no spaces on the closing ---", () => {
+		const body = buildNoteBody({
+			title: "Trip",
+			start: "2026-09-07",
+			end: "2026-09-08",
+			color: "#E7A989",
+			calendar: "Personal",
+		});
+		const lines = body.split("\n");
+		expect(lines[0]).toBe("---");
+		expect(lines[1]).toBe("start: 2026-09-07");
+		const close = lines.indexOf("---", 1);
+		expect(close).toBeGreaterThan(1);
+		expect(lines[close]).toBe("---");
+		expect(lines[close + 1]).toBe("");
+		expect(lines[close + 2]).toBe("# Trip");
+		expect(body).toContain('color: "#E7A989"');
+		expect(body).toContain("calendar: Personal");
+		expect(body).not.toMatch(/---[ \t]+\n/);
+	});
+
+	it("assigns event fields onto an Obsidian frontmatter object", () => {
+		const fm: Record<string, unknown> = { "ics-uid": "old" };
+		assignEventFrontmatter(fm, {
+			title: "Trip",
+			start: "2026-09-07",
+			end: "2026-09-08",
+			color: "#E7A989",
+			calendar: "Personal",
+		});
+		expect(fm).toEqual({
+			start: "2026-09-07",
+			end: "2026-09-08",
+			color: "#E7A989",
+			calendar: "Personal",
+		});
 	});
 
 	it("maps frontmatter to events", () => {

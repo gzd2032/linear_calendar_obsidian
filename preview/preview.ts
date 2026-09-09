@@ -226,6 +226,7 @@ const state = {
 	weekStartsOn: 0,
 	events,
 	eventsFolder: "Calendar",
+	icsCalendarNames: ["Work"],
 	hiddenCalendars: new Set<string>(),
 	search: "",
 	todayIso: "2026-09-07",

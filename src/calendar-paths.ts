@@ -104,6 +104,7 @@ export function uniqueNotePath(desiredPath: string, exists: (path: string) => bo
 export function partitionCalendars(
 	events: CalendarEvent[],
 	eventsFolder: string,
+	icsSourceNames: string[] = [],
 ): { local: string[]; google: string[] } {
 	const local = new Set<string>();
 	const google = new Set<string>();
@@ -112,8 +113,48 @@ export function partitionCalendars(
 		if (isGoogleEvent(event, eventsFolder)) google.add(name);
 		else local.add(name);
 	}
+	for (const name of icsSourceNames) {
+		if (name.trim()) google.add(name.trim());
+	}
 	return {
 		local: [...local].sort((a, b) => a.localeCompare(b)),
 		google: [...google].sort((a, b) => a.localeCompare(b)),
+	};
+}
+
+/** Calendar name from `Calendar/<Name>/note` or `Calendar/google/<Name>/note`. */
+export function calendarNameFromPath(path: string, eventsFolder: string): string {
+	const root = joinPath(eventsFolder);
+	const file = joinPath(path);
+	const rest =
+		file === root || file.startsWith(`${root}/`) ? file.slice(root.length).replace(/^\//, "") : file;
+	const parts = rest.split("/").filter(Boolean);
+	if (parts.length === 0) return "Personal";
+	if (parts[0]?.toLowerCase() === GOOGLE_FOLDER) {
+		return sanitizeFilename(parts[1] || "Google");
+	}
+	return sanitizeCalendarName(parts[0] ?? "Personal");
+}
+
+/** When Properties have not indexed yet, recover an event from `YYYY-MM-DD title.md`. */
+export function eventFromNoteFilename(input: {
+	path: string;
+	basename: string;
+	heading?: string;
+	eventsFolder: string;
+}): CalendarEvent | null {
+	const match = /^(\d{4}-\d{2}-\d{2})(?:\s+(.*))?$/.exec(input.basename);
+	const start = match?.[1];
+	if (!start) return null;
+	const title = (input.heading || match[2] || "Untitled").trim() || "Untitled";
+	const calendar = calendarNameFromPath(input.path, input.eventsFolder);
+	return {
+		id: input.path,
+		title,
+		start,
+		end: start,
+		color: "#A9C7E8",
+		calendar,
+		path: input.path,
 	};
 }

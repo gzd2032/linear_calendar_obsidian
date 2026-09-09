@@ -304,9 +304,9 @@ button.byc-mode-option:hover {
 	min-width: 1100px;
 }
 
-/* Expanded width — Birdseye-like day columns, slightly wider than 60px */
+/* Expanded width — Birdseye-like day columns */
 .byc-root.is-wide {
-	--byc-wide-day: 70px;
+	--byc-wide-day: 80px;
 	--byc-wide-dayhead: 20px;
 	--byc-wide-lane: 28px;
 	--byc-wide-pad: 4px;
@@ -741,6 +741,40 @@ button.byc-mode-option:hover {
 	width: 100%;
 }
 
+.byc-ics-list {
+	margin-top: 0.25em;
+}
+
+.byc-ics-empty {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	padding: 0.35em 0 0.75em;
+}
+
+.byc-ics-compact {
+	padding: 0.35em 0;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.byc-ics-compact .setting-item-info {
+	display: none;
+}
+
+.byc-ics-compact .setting-item-control {
+	justify-content: flex-start;
+	flex-wrap: nowrap;
+	gap: 6px;
+	width: 100%;
+}
+
+.byc-ics-compact .byc-ics-name {
+	width: 8em;
+}
+
+.byc-ics-compact .byc-ics-url-input {
+	width: min(28em, 42vw);
+}
+
 .byc-modal .dropdown {
 	min-width: 12em;
 }
@@ -880,6 +914,7 @@ button.byc-popover-close:active {
 .byc-popover-dates {
 	display: flex;
 	gap: 20px;
+	align-items: flex-start;
 }
 
 .byc-popover-date-label {
@@ -893,10 +928,6 @@ button.byc-popover-close:active {
 .byc-popover-date-value {
 	color: #6b6b66;
 	font-size: 13px;
-}
-
-.byc-popover-days {
-	margin-top: 6px;
 }
 
 .byc-popover-source {

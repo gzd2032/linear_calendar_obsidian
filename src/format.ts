@@ -20,6 +20,55 @@ export function colorForName(name: string): string {
 	return colors[hash % colors.length] ?? "#A9C7E8";
 }
 
+/** Parse `#RGB` / `#RRGGBB` (optional alpha ignored). */
+function parseHexColor(color: string): { r: number; g: number; b: number } | null {
+	const raw = color.trim().replace(/^#/, "");
+	if (/^[0-9a-f]{3}$/i.test(raw)) {
+		return {
+			r: Number.parseInt(raw[0]! + raw[0]!, 16),
+			g: Number.parseInt(raw[1]! + raw[1]!, 16),
+			b: Number.parseInt(raw[2]! + raw[2]!, 16),
+		};
+	}
+	if (/^[0-9a-f]{6}([0-9a-f]{2})?$/i.test(raw)) {
+		return {
+			r: Number.parseInt(raw.slice(0, 2), 16),
+			g: Number.parseInt(raw.slice(2, 4), 16),
+			b: Number.parseInt(raw.slice(4, 6), 16),
+		};
+	}
+	return null;
+}
+
+function channelLuminance(channel: number): number {
+	const c = channel / 255;
+	return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+}
+
+/** WCAG relative luminance of an sRGB color. */
+function relativeLuminance(r: number, g: number, b: number): number {
+	return 0.2126 * channelLuminance(r) + 0.7152 * channelLuminance(g) + 0.0722 * channelLuminance(b);
+}
+
+function contrastAgainst(luminance: number, against: number): number {
+	const lighter = Math.max(luminance, against);
+	const darker = Math.min(luminance, against);
+	return (lighter + 0.05) / (darker + 0.05);
+}
+
+/**
+ * Black or white text for a background, choosing the higher WCAG contrast.
+ * Falls back to the existing event-bar dark text when the color cannot be parsed.
+ */
+export function contrastingTextColor(background: string): string {
+	const rgb = parseHexColor(background);
+	if (!rgb) return "#3a322c";
+	const L = relativeLuminance(rgb.r, rgb.g, rgb.b);
+	const white = contrastAgainst(L, 1);
+	const black = contrastAgainst(L, 0);
+	return white >= black ? "#ffffff" : "#1a1a1a";
+}
+
 export function sanitizeFilename(title: string): string {
 	return (
 		title

@@ -1,5 +1,6 @@
 import { wireCellDrag } from "./drag";
 import { div, el, mount, setCssProps } from "./dom";
+import { contrastingTextColor } from "./format";
 import {
 	buildYearGrid,
 	formatEventTooltip,
@@ -30,6 +31,7 @@ export interface CalendarUIState {
 	weekStartsOn: number;
 	events: CalendarEvent[];
 	eventsFolder: string;
+	icsCalendarNames: string[];
 	hiddenCalendars: Set<string>;
 	search: string;
 	todayIso: string;
@@ -64,7 +66,11 @@ export function renderCalendar(
 	const query = state.search.trim().toLowerCase();
 	const hiddenCount = state.hiddenCalendars.size;
 	const visibleEvents = filterVisibleEvents(state.events, state.hiddenCalendars, query);
-	const { local, google } = partitionCalendars(state.events, state.eventsFolder);
+	const { local, google } = partitionCalendars(
+		state.events,
+		state.eventsFolder,
+		state.icsCalendarNames,
+	);
 	const calendars = [...local, ...google];
 	const grid = buildYearGrid(state.year, state.mode, state.weekStartsOn, state.todayIso);
 	const todayYear = Number(state.todayIso.slice(0, 4));
@@ -471,6 +477,7 @@ function mountEventBar(
 		bar.style.gridRow = String(segment.lane + 2);
 	}
 	bar.style.background = segment.event.color;
+	bar.style.color = contrastingTextColor(segment.event.color);
 	bar.textContent = segment.event.title;
 	bar.title = formatEventTooltip(segment.event);
 	bar.addEventListener("click", (event) => {

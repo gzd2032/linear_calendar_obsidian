@@ -87,12 +87,16 @@ export class EventDetailPopover {
 		const endCol = mount(dates, div("byc-popover-date"));
 		mount(endCol, div("byc-popover-date-label", "End"));
 		mount(endCol, div("byc-popover-date-value", formatShortDate(event.end)));
-
 		const days = eventDayCount(event.start, event.end);
-		mount(body, div("byc-popover-days", days === 1 ? "1 day" : `${days} days`));
-		if (google) {
-			mount(body, div("byc-popover-source", "Google Calendar · read-only"));
-		}
+		const daysCol = mount(dates, div("byc-popover-date"));
+		mount(daysCol, div("byc-popover-date-label", "Duration"));
+		mount(daysCol, div("byc-popover-date-value", days === 1 ? "1 day" : `${days} days`));
+
+		const calendarName = event.calendar.trim() || "Personal";
+		mount(
+			body,
+			div("byc-popover-source", google ? `${calendarName} · read-only` : calendarName),
+		);
 
 		const descEl = mount(body, div("byc-popover-desc"));
 		descEl.hidden = true;

@@ -1,6 +1,7 @@
 import { type App, TFile, TFolder, normalizePath } from "obsidian";
 import {
 	GOOGLE_FOLDER,
+	eventFromNoteFilename,
 	googleCalendarFolder,
 	localCalendarFolder,
 	localCalendarNames,
@@ -38,15 +39,25 @@ export function listEventNotes(app: App, folder: string): CalendarEvent[] {
 	for (const file of app.vault.getMarkdownFiles()) {
 		if (prefix && file.path !== prefix && !file.path.startsWith(`${prefix}/`)) continue;
 		const cache = app.metadataCache.getFileCache(file);
+		const heading = cache?.headings?.[0]?.heading;
 		const fm = cache?.frontmatter;
-		if (!fm) continue;
-		const event = eventFromFrontmatter({
-			path: file.path,
-			basename: file.basename,
-			frontmatter: fm,
-			heading: cache?.headings?.[0]?.heading,
-		});
-		if (event) events.push(event);
+		const fromFrontmatter = fm
+			? eventFromFrontmatter({
+					path: file.path,
+					basename: file.basename,
+					frontmatter: fm,
+					heading,
+				})
+			: null;
+		const parsed =
+			fromFrontmatter ??
+			eventFromNoteFilename({
+				path: file.path,
+				basename: file.basename,
+				heading,
+				eventsFolder: folder,
+			});
+		if (parsed) events.push(parsed);
 	}
 	return events;
 }
@@ -97,6 +108,15 @@ export async function readNoteDescription(app: App, path: string): Promise<strin
 	return extractNoteDescription(content);
 }
 
+/** One atomic write so Properties and the calendar see the same note. */
+async function writeEventContents(
+	app: App,
+	file: TFile,
+	event: Omit<CalendarEvent, "id" | "path">,
+): Promise<void> {
+	await app.vault.modify(file, buildNoteBody(event));
+}
+
 export async function createEventNote(
 	app: App,
 	eventsFolder: string,
@@ -133,7 +153,7 @@ export async function updateEventNote(
 	if (!(file instanceof TFile)) throw new Error(`Missing note: ${path}`);
 	const calendar = sanitizeCalendarName(event.calendar);
 	const payload = { ...event, calendar };
-	await app.vault.modify(file, buildNoteBody(payload));
+	await writeEventContents(app, file, payload);
 	const destFolder = localCalendarFolder(eventsFolder, calendar);
 	const currentFolder = normalizePath(file.parent?.path ?? "");
 	if (currentFolder === normalizePath(destFolder)) return file.path;
@@ -170,7 +190,7 @@ export async function upsertIcsNotes(
 			const file = app.vault.getAbstractFileByPath(current.path);
 			if (file instanceof TFile) {
 				const description = await readNoteDescription(app, current.path);
-				await app.vault.modify(file, buildNoteBody({ ...payload, description }));
+				await writeEventContents(app, file, { ...payload, description });
 				written += 1;
 				continue;
 			}

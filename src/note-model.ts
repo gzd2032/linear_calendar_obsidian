@@ -13,30 +13,60 @@ export function toIsoDate(value: unknown): string | null {
 	return null;
 }
 
-/** Body text after YAML frontmatter and the leading `# Title` heading. */
-export function extractNoteDescription(content: string): string {
-	let body = content;
-	if (body.startsWith("---")) {
-		const end = body.indexOf("\n---", 3);
-		if (end !== -1) body = body.slice(end + 4);
-	}
-	body = body.replace(/^\s*#[^\n]*\r?\n?/, "");
-	return body.trim();
+/** Opening `---` through the closing fence, including a trailing newline. */
+const YAML_FRONTMATTER = /^[\uFEFF\s]*---[ \t]*\r?\n(?:[\s\S]*?\r?\n)?---[ \t]*(?:\r?\n|$)/;
+
+/** Quote YAML scalars that would break Properties (`#` colors, spaces, quotes). */
+function yamlScalar(value: string): string {
+	if (value === "" || /[^A-Za-z0-9_./-]/.test(value)) return JSON.stringify(value);
+	return value;
 }
 
+/** Body text after YAML frontmatter and the leading `# Title` heading. */
+export function extractNoteDescription(content: string): string {
+	const withoutBom = content.replace(/^\uFEFF/, "");
+	const fence = withoutBom.match(YAML_FRONTMATTER);
+	const body = fence ? withoutBom.slice(fence[0].length) : withoutBom;
+	return body.replace(/^\s*#[^\n]*\r?\n?/, "").trim();
+}
+
+/**
+ * Obsidian Properties only parse a tight fence: `---` with no trailing spaces,
+ * keys immediately after the opener, and the heading on the next line after the closer.
+ */
 export function buildNoteBody(event: Omit<CalendarEvent, "id" | "path">): string {
+	const title = event.title.trim() || "Untitled";
 	const lines = [
 		"---",
 		`start: ${event.start}`,
 		`end: ${event.end}`,
-		`color: "${event.color}"`,
-		`calendar: "${event.calendar.replace(/"/g, '\\"')}"`,
+		`color: ${yamlScalar(event.color)}`,
+		`calendar: ${yamlScalar(event.calendar)}`,
 	];
-	if (event.icsUid) lines.push(`ics-uid: ${event.icsUid}`);
-	lines.push("---", "", `# ${event.title}`, "");
+	if (event.icsUid) lines.push(`ics-uid: ${yamlScalar(event.icsUid)}`);
+	lines.push("---", "", `# ${title}`);
 	const description = (event.description ?? "").trim();
-	if (description) lines.push(description, "");
-	return lines.join("\n");
+	if (description) lines.push("", description);
+	return `${lines.join("\n")}\n`;
+}
+
+/** Markdown after Properties: `# Title` plus optional description. */
+export function buildNoteMarkdown(event: Omit<CalendarEvent, "id" | "path">): string {
+	const title = event.title.trim() || "Untitled";
+	const description = (event.description ?? "").trim();
+	return description ? `# ${title}\n\n${description}\n` : `# ${title}\n`;
+}
+
+export function assignEventFrontmatter(
+	fm: Record<string, unknown>,
+	event: Omit<CalendarEvent, "id" | "path">,
+): void {
+	fm.start = event.start;
+	fm.end = event.end;
+	fm.color = event.color;
+	fm.calendar = event.calendar;
+	if (event.icsUid) fm["ics-uid"] = event.icsUid;
+	else delete fm["ics-uid"];
 }
 
 export function eventFromFrontmatter(input: {
