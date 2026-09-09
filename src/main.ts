@@ -1,5 +1,5 @@
 import { Notice, Plugin } from "obsidian";
-import { DEFAULT_SETTINGS, LinearYearCalendarSettingTab } from "./settings";
+import { asIcsSources, DEFAULT_SETTINGS, LinearYearCalendarSettingTab } from "./settings";
 import type { PluginSettings } from "./types";
 import { VIEW_TYPE, YearCalendarView } from "./view";
 
@@ -68,6 +68,7 @@ export default class LinearYearCalendarPlugin extends Plugin {
 	async loadSettings(): Promise<void> {
 		const data = ((await this.loadData()) ?? {}) as Partial<PluginSettings>;
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
+		this.settings.icsSources = asIcsSources(data.icsSources);
 		// v2: product default is Stacked (older installs may have saved Linear)
 		if ((data.settingsVersion ?? 0) < 2) {
 			this.settings.defaultView = "stacked";
@@ -77,6 +78,17 @@ export default class LinearYearCalendarPlugin extends Plugin {
 		// v3: Google ICS under Calendar/google/; local calendars under Calendar/<Name>/
 		if ((data.settingsVersion ?? 0) < 3) {
 			this.settings.settingsVersion = 3;
+			await this.saveSettings();
+		}
+		// v4: import timed Google events (they render as one-day bars)
+		if ((data.settingsVersion ?? 0) < 4) {
+			this.settings.importAllDayOnly = false;
+			this.settings.settingsVersion = 4;
+			await this.saveSettings();
+		}
+		// v5: optional built-in Google US holiday calendar
+		if ((data.settingsVersion ?? 0) < 5) {
+			this.settings.settingsVersion = 5;
 			await this.saveSettings();
 		}
 	}

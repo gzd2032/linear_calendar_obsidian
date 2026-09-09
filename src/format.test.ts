@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	colorForName,
+	contrastingTextColor,
 	eventDayCount,
 	formatEventRange,
 	formatEventTooltip,
@@ -40,5 +41,14 @@ describe("format", () => {
 		expect(sanitizeFilename("   ")).toBe("Untitled");
 		expect(colorForName("Home")).toBe(colorForName("Home"));
 		expect(colorForName("A")).not.toBe(colorForName("B"));
+	});
+
+	it("picks black or white text for stronger WCAG contrast", () => {
+		expect(contrastingTextColor("#F0C987")).toBe("#1a1a1a");
+		expect(contrastingTextColor("#A9C7E8")).toBe("#1a1a1a");
+		expect(contrastingTextColor("#222222")).toBe("#ffffff");
+		expect(contrastingTextColor("#5a4b80")).toBe("#ffffff");
+		expect(contrastingTextColor("#abc")).toBe("#1a1a1a");
+		expect(contrastingTextColor("not-a-color")).toBe("#3a322c");
 	});
 });

@@ -29,6 +29,8 @@ export interface PluginSettings {
 	icsSources: IcsSource[];
 	hiddenCalendars: string[];
 	importAllDayOnly: boolean;
+	googleHolidaysEnabled: boolean;
+	googleHolidaysColor: string;
 	wideLayout: boolean;
 	settingsVersion: number;
 }

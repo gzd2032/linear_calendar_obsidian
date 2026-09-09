@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	GOOGLE_FOLDER,
+	eventFromNoteFilename,
 	googleCalendarDayUrl,
 	googleCalendarFolder,
 	isGoogleEvent,
@@ -88,6 +89,25 @@ describe("calendar-paths", () => {
 		expect(partitionCalendars(events, "Calendar")).toEqual({
 			local: ["Personal"],
 			google: ["Work"],
+		});
+		expect(partitionCalendars(events, "Calendar", ["Family Events"])).toEqual({
+			local: ["Personal"],
+			google: ["Family Events", "Work"],
+		});
+	});
+
+	it("recovers events from dated filenames when Properties are missing", () => {
+		expect(
+			eventFromNoteFilename({
+				path: "Calendar/google/Annual Events/2026-03-15 Pat.md",
+				basename: "2026-03-15 Pat",
+				eventsFolder: "Calendar",
+			}),
+		).toMatchObject({
+			start: "2026-03-15",
+			title: "Pat",
+			calendar: "Annual Events",
+			path: "Calendar/google/Annual Events/2026-03-15 Pat.md",
 		});
 	});
 });

@@ -1,6 +1,14 @@
 import { ItemView, Notice, requestUrl, type WorkspaceLeaf } from "obsidian";
 import { colorForName, endOnOrAfterStart, parseISODate } from "./grid";
-import { parseIcs, normalizeIcsUrl } from "./ics";
+import {
+	countVevents,
+	GOOGLE_HOLIDAYS_NAME,
+	GOOGLE_US_HOLIDAYS_ICS_URL,
+	icsTextFromResponse,
+	isIcsCalendar,
+	normalizeIcsUrl,
+	parseIcs,
+} from "./ics";
 import type LinearYearCalendarPlugin from "./main";
 import { EventCreateModal } from "./modal";
 import {
@@ -86,7 +94,10 @@ export class YearCalendarView extends ItemView {
 
 	render(): void {
 		this.popover?.close();
-		const events = listEventNotes(this.app, this.plugin.settings.eventsFolder);
+		const events = listEventNotes(this.app, this.plugin.settings.eventsFolder).filter(
+			(event) =>
+				this.plugin.settings.googleHolidaysEnabled || event.calendar !== GOOGLE_HOLIDAYS_NAME,
+		);
 		const scrollToToday = this.scrollToToday;
 		this.scrollToToday = false;
 		renderCalendar(
@@ -97,6 +108,10 @@ export class YearCalendarView extends ItemView {
 				weekStartsOn: this.plugin.settings.weekStartsOn,
 				events,
 				eventsFolder: this.plugin.settings.eventsFolder,
+				icsCalendarNames: [
+					...this.plugin.settings.icsSources.map((source) => source.name).filter(Boolean),
+					...(this.plugin.settings.googleHolidaysEnabled ? [GOOGLE_HOLIDAYS_NAME] : []),
+				],
 				hiddenCalendars: new Set(this.plugin.settings.hiddenCalendars),
 				search: this.search,
 				todayIso: this.todayIso,
@@ -202,24 +217,55 @@ export class YearCalendarView extends ItemView {
 	}
 
 	async refreshIcs(): Promise<void> {
-		const sources = this.plugin.settings.icsSources.filter((source) => source.enabled && source.url);
+		const sources = [
+			...this.plugin.settings.icsSources.filter((source) => source.enabled && source.url),
+			...(this.plugin.settings.googleHolidaysEnabled
+				? [
+						{
+							id: "google-us-holidays",
+							name: GOOGLE_HOLIDAYS_NAME,
+							url: GOOGLE_US_HOLIDAYS_ICS_URL,
+							color: this.plugin.settings.googleHolidaysColor,
+							enabled: true,
+						},
+					]
+				: []),
+		];
 		if (sources.length === 0) {
 			new Notice("Add an ICS URL in Linear Year Calendar settings.");
 			return;
 		}
+		const allDayOnly = this.plugin.settings.importAllDayOnly;
 		let total = 0;
 		let trashed = 0;
+		const problems: string[] = [];
 		for (const source of sources) {
 			try {
-				const res = await requestUrl({ url: normalizeIcsUrl(source.url) });
-				const parsed = parseIcs(
-					res.text,
-					source.name,
-					source.color,
-					this.year,
-					this.year,
-					this.plugin.settings.importAllDayOnly,
-				);
+				const res = await requestUrl({
+					url: normalizeIcsUrl(source.url),
+					headers: { Accept: "text/calendar, text/plain;q=0.9, */*;q=0.8" },
+				});
+				const text = icsTextFromResponse(res);
+				if (!isIcsCalendar(text)) {
+					problems.push(`${source.name}: URL is not an iCal feed`);
+					continue;
+				}
+				const vevents = countVevents(text);
+				const includingTimed = parseIcs(text, source.name, source.color, this.year, this.year, false);
+				const parsed = allDayOnly
+					? parseIcs(text, source.name, source.color, this.year, this.year, true)
+					: includingTimed;
+				if (parsed.length === 0) {
+					if (allDayOnly && includingTimed.length > 0) {
+						problems.push(
+							`${source.name}: ${includingTimed.length} timed events skipped — turn off All-day events only`,
+						);
+					} else if (vevents === 0) {
+						problems.push(`${source.name}: feed has no events`);
+					} else {
+						problems.push(`${source.name}: ${vevents} in feed, none in ${this.year}`);
+					}
+				}
 				const result = await upsertIcsNotes(
 					this.app,
 					this.plugin.settings.eventsFolder,
@@ -232,11 +278,17 @@ export class YearCalendarView extends ItemView {
 				trashed += result.trashed;
 			} catch (error) {
 				console.error(error);
-				new Notice(`Could not import ${source.name}. Check the ICS URL.`);
+				const detail = error instanceof Error && error.message ? error.message : "Check the ICS URL.";
+				problems.push(`${source.name}: ${detail}`);
 			}
 		}
 		const extra = trashed > 0 ? `, removed ${trashed} stale` : "";
-		new Notice(`Imported ${total} event notes${extra}.`);
+		const summary = `Imported ${total} event notes for ${this.year}${extra}.`;
+		if (problems.length > 0) {
+			new Notice(`${summary} ${problems.join(" ")}`, 8000);
+		} else {
+			new Notice(summary);
+		}
 		this.render();
 	}
 }
