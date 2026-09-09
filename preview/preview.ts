@@ -1,3 +1,4 @@
+import "./obsidian-dom-shim";
 import { renderCalendar } from "../src/ui";
 import type { CalendarEvent, ViewMode } from "../src/types";
 
@@ -220,6 +221,15 @@ const app = document.getElementById("app");
 if (!app) throw new Error("Missing #app");
 const root: HTMLElement = app;
 
+const statusNode = document.getElementById("preview-status");
+if (!statusNode) throw new Error("Missing #preview-status");
+const statusEl: HTMLElement = statusNode;
+
+function setPreviewStatus(message: string): void {
+	statusEl.textContent = message;
+	statusEl.hidden = !message;
+}
+
 const state = {
 	year: 2026,
 	mode: "stacked" as ViewMode,
@@ -279,10 +289,10 @@ function paint(): void {
 				paint();
 			},
 			onEventClick: (event, _anchor) => {
-				console.info(`[preview] ${event.title}\n${event.start} → ${event.end}`);
+				setPreviewStatus(`Event: ${event.title} · ${event.start} → ${event.end}`);
 			},
 			onRangeSelect: (start, end) => {
-				console.info(`[preview] Create event ${start} → ${end}`);
+				setPreviewStatus(`Create event ${start} → ${end}`);
 			},
 		},
 	);

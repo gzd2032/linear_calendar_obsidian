@@ -1,10 +1,17 @@
 import { div, el, mount } from "./dom";
 
-/** Build an SVG icon via DOM APIs (no innerHTML). */
+type CreateSvgFn = (tag: string) => SVGElement;
+
+/** Build an SVG icon via Obsidian createSvg (or preview shim) — no createElementNS in src/. */
 export function svgIcon(paths: string[], size = 16): SVGSVGElement {
-	const createSvg =
-		(window as unknown as { createSvg?: (tag: string) => SVGElement }).createSvg ??
-		((tag: string) => document.createElementNS("http://www.w3.org/2000/svg", tag));
+	const win = window as unknown as {
+		createSvg?: CreateSvgFn;
+		activeWindow?: Window & { createSvg?: CreateSvgFn };
+	};
+	const createSvg = win.activeWindow?.createSvg ?? win.createSvg;
+	if (typeof createSvg !== "function") {
+		throw new Error("createSvg is required (Obsidian runtime or preview/obsidian-dom-shim)");
+	}
 	const svg = createSvg("svg") as SVGSVGElement;
 	svg.setAttribute("viewBox", "0 0 24 24");
 	svg.setAttribute("width", String(size));
