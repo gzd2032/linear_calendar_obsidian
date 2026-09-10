@@ -6,6 +6,7 @@
 	--byc-cell: var(--background-primary-alt, var(--background-primary));
 	--byc-weekend: var(--background-secondary-alt, var(--background-secondary));
 	--byc-line: var(--background-modifier-border);
+	--byc-focus: var(--background-modifier-border-focus);
 	--byc-text: var(--text-normal);
 	--byc-muted: var(--text-muted);
 	--byc-faint: var(--text-faint, var(--text-muted));
@@ -101,7 +102,7 @@
 .byc-menu-action:focus-visible,
 .byc-event:focus-visible,
 .byc-color-dot:focus-visible {
-	outline: 2px solid var(--interactive-accent, var(--byc-accent));
+	outline: 2px solid var(--byc-focus);
 	outline-offset: 2px;
 }
 
@@ -230,7 +231,7 @@ button.byc-mode-option:hover {
 }
 
 button.byc-mode-option:focus-visible {
-	outline: 2px solid var(--interactive-accent, var(--byc-accent));
+	outline: 2px solid var(--byc-focus);
 	outline-offset: 2px;
 	border-radius: 8px;
 }
@@ -913,7 +914,7 @@ button.byc-event {
 }
 
 .byc-popover-title:focus-visible {
-	outline: 2px solid color-mix(in srgb, var(--byc-today) 70%, var(--byc-text));
+	outline: 2px solid var(--byc-focus);
 	outline-offset: 2px;
 }
 
@@ -946,12 +947,15 @@ button.byc-popover-close:hover {
 }
 
 button.byc-popover-close:focus,
-button.byc-popover-close:focus-visible,
 button.byc-popover-close:active {
 	background: transparent;
 	border: none;
-	outline: none;
 	box-shadow: none;
+}
+
+button.byc-popover-close:focus-visible {
+	outline: 2px solid var(--byc-focus);
+	outline-offset: 2px;
 }
 
 .byc-popover-body {
@@ -1031,7 +1035,7 @@ button.byc-popover-close:active {
 }
 
 .byc-popover-delete:focus-visible {
-	outline: 2px solid color-mix(in srgb, var(--byc-danger) 45%, transparent);
+	outline: 2px solid var(--byc-focus);
 	outline-offset: 2px;
 }
 
@@ -1060,6 +1064,6 @@ button.byc-popover-close:active {
 }
 
 .byc-popover-edit:focus-visible {
-	outline: 2px solid var(--byc-text);
+	outline: 2px solid var(--byc-focus);
 	outline-offset: 2px;
 }
