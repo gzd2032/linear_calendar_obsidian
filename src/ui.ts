@@ -273,6 +273,19 @@ function renderToolbar(
 		}),
 	).addEventListener("click", () => handlers.onFocusToday());
 
+	if (state.icsLastRefreshLabel) {
+		mount(
+			left,
+			el("span", {
+				cls: "byc-refresh-meta",
+				text: state.icsLastRefreshLabel,
+				attr: {
+					title: state.icsRefreshStatusTitle || state.icsLastRefreshLabel,
+				},
+			}),
+		);
+	}
+
 	const right = mount(toolbar, div("byc-toolbar-right"));
 	const menus: HTMLElement[] = [];
 	const buttons: HTMLButtonElement[] = [];
@@ -411,18 +424,6 @@ function renderToolbar(
 			const btn = iconButton(right, "Refresh ICS calendars", refreshIcon());
 			btn.classList.add("byc-refresh-btn");
 			btn.addEventListener("click", () => handlers.onRefresh?.());
-		}
-		if (state.icsLastRefreshLabel) {
-			mount(
-				right,
-				el("span", {
-					cls: "byc-refresh-meta",
-					text: state.icsLastRefreshLabel,
-					attr: {
-						title: state.icsRefreshStatusTitle || state.icsLastRefreshLabel,
-					},
-				}),
-			);
 		}
 	}
 
