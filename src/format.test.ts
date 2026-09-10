@@ -18,6 +18,7 @@ describe("format", () => {
 
 	it("formats short dates and ranges", () => {
 		expect(formatShortDate("2026-09-07")).toBe("Sep 7");
+		expect(formatShortDate("2026-09-07", true)).toBe("Sep 7, 2026");
 		expect(formatShortDate("nope")).toBe("nope");
 		expect(formatEventRange("2026-09-07", "2026-09-07")).toBe("Sep 7");
 		expect(formatEventRange("2026-06-24", "2026-07-15")).toBe("Jun 24 – Jul 15");

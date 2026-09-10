@@ -1306,13 +1306,6 @@ button.byc-popover-close:hover {
 	box-shadow: none;
 }
 
-button.byc-popover-close:focus,
-button.byc-popover-close:active {
-	background: transparent;
-	border: none;
-	box-shadow: none;
-}
-
 button.byc-popover-close:focus-visible {
 	outline: 2px solid var(--byc-focus);
 	outline-offset: 2px;
@@ -1346,9 +1339,35 @@ button.byc-popover-close:focus-visible {
 }
 
 .byc-popover-source {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 8px;
 	margin-top: 8px;
 	font-size: 12px;
 	color: var(--byc-muted);
+}
+
+.byc-popover-badge {
+	display: inline-flex;
+	align-items: center;
+	max-width: 100%;
+	padding: 2px 8px 2px 6px;
+	border-radius: 999px;
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 1.3;
+	color: var(--byc-text);
+	background: color-mix(in srgb, var(--byc-badge, var(--byc-accent)) 22%, var(--byc-elevated));
+	box-shadow: inset 3px 0 0 var(--byc-badge, var(--byc-accent));
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.byc-popover-readonly {
+	font-size: 11px;
+	color: var(--byc-faint);
 }
 
 .byc-popover-desc {
@@ -1424,6 +1443,34 @@ button.byc-popover-close:focus-visible {
 }
 
 .byc-popover-edit:focus-visible {
+	outline: 2px solid var(--byc-focus);
+	outline-offset: 2px;
+}
+
+.byc-popover-external {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	min-height: 36px;
+	margin-left: auto;
+	border: 1px solid var(--byc-line);
+	outline: none;
+	background: transparent;
+	color: var(--byc-text);
+	font: inherit;
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+	padding: 8px 14px;
+	border-radius: 999px;
+}
+
+.byc-popover-external:hover {
+	background: var(--byc-hover);
+}
+
+.byc-popover-external:focus-visible {
 	outline: 2px solid var(--byc-focus);
 	outline-offset: 2px;
 }

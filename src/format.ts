@@ -87,10 +87,11 @@ export function eventDayCount(start: string, end: string): number {
 	return Math.round((b.getTime() - a.getTime()) / 86400000) + 1;
 }
 
-export function formatShortDate(iso: string): string {
+export function formatShortDate(iso: string, withYear = false): string {
 	const date = parseISODate(iso);
 	if (!date) return iso;
-	return `${MONTHS[date.getMonth()]} ${date.getDate()}`;
+	const short = `${MONTHS[date.getMonth()]} ${date.getDate()}`;
+	return withYear ? `${short}, ${date.getFullYear()}` : short;
 }
 
 export function formatEventRange(start: string, end: string): string {
