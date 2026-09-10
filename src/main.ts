@@ -26,8 +26,18 @@ export default class LinearYearCalendarPlugin extends Plugin {
 		this.addCommand({
 			id: "refresh-ics",
 			name: "Refresh ICS calendars",
-			callback: () => {
-				void this.refreshIcs();
+			checkCallback: (checking) => {
+				const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE)[0];
+				const view = leaf?.view instanceof YearCalendarView ? leaf.view : null;
+				const busy = Boolean(view?.importing);
+				if (checking) return Boolean(view) && !busy;
+				if (!view) {
+					new Notice("Open Linear Year Calendar first, then refresh.");
+					return false;
+				}
+				if (busy) return false;
+				void view.refreshIcs();
+				return true;
 			},
 		});
 
@@ -59,6 +69,7 @@ export default class LinearYearCalendarPlugin extends Plugin {
 	async refreshIcs(): Promise<void> {
 		const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE)[0];
 		if (leaf?.view instanceof YearCalendarView) {
+			if (leaf.view.importing) return;
 			await leaf.view.refreshIcs();
 			return;
 		}
@@ -89,6 +100,15 @@ export default class LinearYearCalendarPlugin extends Plugin {
 		// v5: optional built-in Google US holiday calendar
 		if ((data.settingsVersion ?? 0) < 5) {
 			this.settings.settingsVersion = 5;
+			await this.saveSettings();
+		}
+		// v6: ICS refresh status fields
+		if ((data.settingsVersion ?? 0) < 6) {
+			this.settings.lastIcsRefreshAt = this.settings.lastIcsRefreshAt ?? "";
+			this.settings.icsRefreshResults = Array.isArray(this.settings.icsRefreshResults)
+				? this.settings.icsRefreshResults
+				: [];
+			this.settings.settingsVersion = 6;
 			await this.saveSettings();
 		}
 	}

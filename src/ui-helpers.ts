@@ -34,7 +34,7 @@ export function iconButton(
 ): HTMLButtonElement {
 	const button = mount(
 		parent,
-		el("button", { cls: "byc-icon-btn", type: "button", attr: { "aria-label": label, title: label } }),
+		el("button", { cls: "byc-icon-btn", type: "button", attr: { "aria-label": label } }),
 	) as HTMLButtonElement;
 	button.appendChild(icon);
 	return button;
@@ -52,7 +52,6 @@ export function labeledIconButton(
 		el("button", {
 			cls,
 			type: "button",
-			attr: { "aria-label": label, title: label },
 		}),
 	) as HTMLButtonElement;
 	button.appendChild(icon);
@@ -70,6 +69,12 @@ export function chevronRight(): SVGSVGElement {
 
 export function refreshIcon(): SVGSVGElement {
 	return svgIcon(["M21 12a9 9 0 1 1-2.3-6", "M21 3v6h-6"]);
+}
+
+export function spinnerIcon(): SVGSVGElement {
+	const svg = svgIcon(["M12 3a9 9 0 1 1-6.36 2.64"]);
+	svg.classList.add("byc-spinner-icon");
+	return svg;
 }
 
 export function expandIcon(): SVGSVGElement {

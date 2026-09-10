@@ -27,6 +27,7 @@ import {
 	iconButton,
 	padDay,
 	refreshIcon,
+	spinnerIcon,
 	toggleMenu,
 	viewLabel,
 } from "./ui-helpers";
@@ -49,6 +50,12 @@ export interface CalendarUIState {
 	scrollToToday?: boolean;
 	/** When true (pane ≤ {@link NARROW_MAX_WIDTH_PX}), render compact month-list. */
 	narrow?: boolean;
+	/** ICS refresh in flight — disable refresh control. */
+	icsImporting?: boolean;
+	/** Short label for last refresh time (toolbar). */
+	icsLastRefreshLabel?: string;
+	/** Tooltip / title with per-calendar refresh status. */
+	icsRefreshStatusTitle?: string;
 }
 
 export interface CalendarUIHandlers {
@@ -59,7 +66,7 @@ export interface CalendarUIHandlers {
 	onToggleCalendar: (name: string) => void;
 	onShowAllCalendars?: () => void;
 	onToggleWideLayout: () => void;
-	onEventClick: (event: CalendarEvent, anchor: HTMLElement) => void;
+	onEventClick: (event: CalendarEvent, anchor: HTMLElement, pointer?: { x: number; y: number }) => void;
 	onRangeSelect: (start: string, end: string) => void;
 	onRefresh?: () => void;
 }
@@ -262,9 +269,22 @@ function renderToolbar(
 			cls: "byc-chip byc-today-btn",
 			type: "button",
 			text: "Today",
-			attr: { title: "Focus on today", "aria-label": "Focus on today" },
+			attr: { "aria-label": "Focus on today" },
 		}),
 	).addEventListener("click", () => handlers.onFocusToday());
+
+	if (state.icsLastRefreshLabel) {
+		mount(
+			left,
+			el("span", {
+				cls: "byc-refresh-meta",
+				text: state.icsLastRefreshLabel,
+				attr: {
+					title: state.icsRefreshStatusTitle || state.icsLastRefreshLabel,
+				},
+			}),
+		);
+	}
 
 	const right = mount(toolbar, div("byc-toolbar-right"));
 	const menus: HTMLElement[] = [];
@@ -382,9 +402,28 @@ function renderToolbar(
 	}
 
 	if (handlers.onRefresh) {
-		iconButton(right, "Refresh ICS calendars", refreshIcon()).addEventListener("click", () =>
-			handlers.onRefresh?.(),
-		);
+		const importing = Boolean(state.icsImporting);
+		if (importing) {
+			const busy = mount(
+				right,
+				el("button", {
+					cls: "byc-icon-btn byc-refresh-btn is-importing",
+					type: "button",
+					text: "",
+					attr: {
+						disabled: "true",
+						"aria-busy": "true",
+						"aria-label": "Importing…",
+					},
+				}),
+			) as HTMLButtonElement;
+			busy.appendChild(spinnerIcon());
+			busy.appendChild(el("span", { cls: "byc-refresh-label", text: "Importing…" }));
+		} else {
+			const btn = iconButton(right, "Refresh ICS calendars", refreshIcon());
+			btn.classList.add("byc-refresh-btn");
+			btn.addEventListener("click", () => handlers.onRefresh?.());
+		}
 	}
 
 	return { menus, buttons };
@@ -526,7 +565,7 @@ function renderRowBoard(
 	table.style.setProperty("--byc-cols", String(grid.colCount));
 	const wide = board.closest(".byc-root")?.classList.contains("is-wide") ?? false;
 	const headPx = wide ? 20 : 18;
-	const lanePx = wide ? 28 : grid.mode === "linear" ? 24 : 22;
+	const lanePx = wide ? 32 : grid.mode === "linear" ? 28 : 26;
 	const padPx = 4;
 	const showToday = today.year === today.todayYear;
 
@@ -688,18 +727,19 @@ function renderMonthList(
 						cls: "byc-list-event",
 						type: "button",
 						text: label,
-						title: formatEventTooltip(event),
 						attr: {
-							"aria-label": `${event.title}, ${formatEventRange(event.start, event.end)}`,
 							"data-event-id": event.id,
 						},
 					}),
 				) as HTMLButtonElement;
+				suppressNativeTooltip(eventBtn);
 				eventBtn.style.background = event.color;
 				eventBtn.style.color = contrastingTextColor(event.color);
+				wireEventHoverTip(eventBtn, formatEventTooltip(event));
 				eventBtn.addEventListener("click", (ev) => {
 					ev.stopPropagation();
-					handlers.onEventClick(event, eventBtn);
+					hideEventHoverTip();
+					handlers.onEventClick(event, eventBtn, { x: ev.clientX, y: ev.clientY });
 				});
 			}
 		}
@@ -713,18 +753,17 @@ function mountEventBar(
 	column: boolean,
 ): void {
 	const range = formatEventRange(segment.event.start, segment.event.end);
+	const tipText = formatEventTooltip(segment.event);
 	const bar = mount(
 		parent,
 		el("button", {
 			cls: column ? "byc-event byc-column-event" : "byc-event",
 			type: "button",
 			text: segment.event.title,
-			title: formatEventTooltip(segment.event),
-			attr: {
-				"aria-label": `${segment.event.title}, ${range}`,
-			},
 		}),
 	) as HTMLButtonElement;
+	mount(bar, el("span", { cls: "byc-sr-only", text: `, ${range}` }));
+	suppressNativeTooltip(bar);
 	if (column) {
 		bar.style.gridRow = `${segment.startCol + 1} / ${segment.endCol + 2}`;
 		bar.style.gridColumn = String(segment.lane + 2);
@@ -735,11 +774,105 @@ function mountEventBar(
 	bar.dataset.eventId = segment.event.id;
 	bar.style.background = segment.event.color;
 	bar.style.color = contrastingTextColor(segment.event.color);
+	wireEventHoverTip(bar, tipText);
 	bar.addEventListener("click", (event) => {
 		event.stopPropagation();
-		handlers.onEventClick(segment.event, bar);
+		hideEventHoverTip();
+		handlers.onEventClick(segment.event, bar, { x: event.clientX, y: event.clientY });
 	});
 	bar.addEventListener("pointerdown", (event) => event.stopPropagation());
+}
+
+let eventHoverTip: HTMLElement | null = null;
+let eventHoverTipTimer: number | null = null;
+let eventHoverTipPending: { text: string; x: number; y: number } | null = null;
+
+/** Strip native/Obsidian tooltips (they center on long multi-day bars). */
+function suppressNativeTooltip(target: HTMLElement): void {
+	target.removeAttribute("title");
+	target.removeAttribute("aria-label");
+	target.removeAttribute("data-tooltip");
+	target.removeAttribute("aria-describedby");
+	// Empty title blocks Chromium’s truncated-text overflow tip on some builds.
+	target.title = "";
+	hideForeignTooltips();
+}
+
+function hideForeignTooltips(): void {
+	document.querySelectorAll(".tooltip").forEach((node) => {
+		if (node === eventHoverTip) return;
+		node.remove();
+	});
+}
+
+function wireEventHoverTip(target: HTMLElement, text: string): void {
+	suppressNativeTooltip(target);
+	target.addEventListener("pointerenter", (event) => {
+		suppressNativeTooltip(target);
+		scheduleEventHoverTip(text, event.clientX, event.clientY);
+	});
+	target.addEventListener("pointermove", (event) => {
+		suppressNativeTooltip(target);
+		if (eventHoverTip && !eventHoverTip.hidden) {
+			placeEventHoverTip(event.clientX, event.clientY);
+		} else {
+			scheduleEventHoverTip(text, event.clientX, event.clientY);
+		}
+	});
+	target.addEventListener("pointerleave", () => {
+		hideEventHoverTip();
+	});
+}
+
+function scheduleEventHoverTip(text: string, clientX: number, clientY: number): void {
+	eventHoverTipPending = { text, x: clientX, y: clientY };
+	if (eventHoverTipTimer !== null) return;
+	eventHoverTipTimer = window.setTimeout(() => {
+		eventHoverTipTimer = null;
+		const pending = eventHoverTipPending;
+		if (!pending) return;
+		showEventHoverTip(pending.text, pending.x, pending.y);
+	}, 280);
+}
+
+function showEventHoverTip(text: string, clientX: number, clientY: number): void {
+	if (!eventHoverTip) {
+		eventHoverTip = el("div", {
+			cls: "byc-event-hover-tip",
+			attr: { role: "tooltip" },
+		});
+		document.body.appendChild(eventHoverTip);
+	}
+	eventHoverTip.textContent = text;
+	eventHoverTip.hidden = false;
+	placeEventHoverTip(clientX, clientY);
+}
+
+function placeEventHoverTip(clientX: number, clientY: number): void {
+	if (!eventHoverTip || eventHoverTip.hidden) return;
+	if (eventHoverTipPending) {
+		eventHoverTipPending.x = clientX;
+		eventHoverTipPending.y = clientY;
+	}
+	const pad = 14;
+	const w = eventHoverTip.offsetWidth || 180;
+	const h = eventHoverTip.offsetHeight || 40;
+	let left = clientX + pad;
+	let top = clientY - h / 2;
+	if (left + w > window.innerWidth - 8) left = clientX - w - pad;
+	if (top + h > window.innerHeight - 8) top = window.innerHeight - h - 8;
+	if (top < 8) top = 8;
+	eventHoverTip.style.left = `${left}px`;
+	eventHoverTip.style.top = `${Math.max(8, top)}px`;
+}
+
+function hideEventHoverTip(): void {
+	eventHoverTipPending = null;
+	if (eventHoverTipTimer !== null) {
+		window.clearTimeout(eventHoverTipTimer);
+		eventHoverTipTimer = null;
+	}
+	if (eventHoverTip) eventHoverTip.hidden = true;
 }
 
 export function defaultTodayIso(): string {

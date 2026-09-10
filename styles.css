@@ -27,7 +27,7 @@
 }
 
 .byc-root {
-	--byc-event-inset-x: 4px;
+	--byc-event-inset-x: 6px;
 	height: 100%;
 	display: flex;
 	flex-direction: column;
@@ -87,6 +87,41 @@
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
+}
+
+.byc-refresh-btn.is-importing {
+	width: auto;
+	min-width: 32px;
+	height: 32px;
+	padding: 0 10px;
+	gap: 6px;
+	opacity: 0.85;
+	cursor: default;
+}
+
+.byc-refresh-label {
+	font-size: 12px;
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+.byc-refresh-meta {
+	font-size: 11px;
+	color: var(--byc-muted);
+	max-width: 14em;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.byc-spinner-icon {
+	animation: byc-spin 0.8s linear infinite;
+}
+
+@keyframes byc-spin {
+	to {
+		transform: rotate(360deg);
+	}
 }
 
 .byc-icon-btn:hover,
@@ -366,7 +401,7 @@ button.byc-mode-option:focus-visible {
 	min-width: 0;
 	display: flex;
 	flex-direction: column;
-	gap: 4px;
+	gap: 6px;
 }
 
 .byc-list-event {
@@ -457,6 +492,37 @@ button.byc-mode-option:focus-visible {
 	white-space: nowrap;
 }
 
+.byc-sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+/* Cursor-following event tip. Opaque message colors so text stays readable. */
+.byc-event-hover-tip {
+	position: fixed;
+	z-index: var(--layer-tooltip, 10000);
+	pointer-events: none;
+	padding: 4px 8px;
+	border-radius: var(--radius-s, 4px);
+	background-color: var(--background-modifier-message, #2a2a2a);
+	color: var(--text-on-accent, #fff);
+	font-size: var(--font-ui-smaller, 12px);
+	font-weight: var(--font-medium, 500);
+	line-height: 1.35;
+	white-space: pre-line;
+	text-align: left;
+	opacity: 1;
+	box-shadow: var(--shadow-s, 0 2px 8px rgba(0, 0, 0, 0.18));
+	max-width: min(280px, calc(100vw - 16px));
+}
+
 .byc-table {
 	min-width: 1100px;
 }
@@ -465,9 +531,9 @@ button.byc-mode-option:focus-visible {
 .byc-root.is-wide {
 	--byc-wide-day: 80px;
 	--byc-wide-dayhead: 20px;
-	--byc-wide-lane: 28px;
+	--byc-wide-lane: 32px;
 	--byc-wide-pad: 4px;
-	--byc-event-inset-x: 6px;
+	--byc-event-inset-x: 8px;
 }
 
 .byc-root.is-wide .byc-table {
@@ -516,12 +582,14 @@ button.byc-mode-option:focus-visible {
 }
 
 .byc-root.is-wide .byc-event {
-	margin: 2px var(--byc-event-inset-x);
+	margin: 1.5px var(--byc-event-inset-x);
 	padding: 2px 8px;
 	font-size: 11px;
 	border-radius: 4px;
 	line-height: 1.2;
 	min-height: 0;
+	height: calc(100% - 3px);
+	max-height: calc(100% - 3px);
 }
 
 .byc-root.is-wide .byc-month-label {
@@ -772,7 +840,8 @@ button.byc-mode-option:focus-visible {
 
 .byc-event {
 	z-index: 2;
-	margin: 1px var(--byc-event-inset-x);
+	/* Margin alone is not enough when max-height:100% overflows the lane into the next. */
+	margin: 1.5px var(--byc-event-inset-x);
 	border-radius: 4px;
 	padding: 1px 5px;
 	font-size: 10px;
@@ -785,7 +854,9 @@ button.byc-mode-option:focus-visible {
 	cursor: pointer;
 	box-sizing: border-box;
 	min-height: 0;
-	max-height: 100%;
+	height: calc(100% - 3px);
+	max-height: calc(100% - 3px);
+	align-self: center;
 	box-shadow: 0 1px 0 color-mix(in srgb, var(--byc-text) 8%, transparent);
 	transition: filter 140ms ease, box-shadow 140ms ease;
 }
@@ -856,10 +927,12 @@ button.byc-event {
 
 .byc-column-event {
 	z-index: 2;
-	margin: 1px 3px 1px 2px;
+	margin: 2px 3px;
 	min-width: 0;
 	writing-mode: horizontal-tb;
-	align-self: stretch;
+	align-self: center;
+	height: calc(100% - 4px);
+	max-height: calc(100% - 4px);
 }
 
 .byc-column-gutter {
@@ -992,6 +1065,11 @@ button.byc-event {
 	opacity: 0;
 	transform: translateY(4px) scale(0.98);
 	transition: opacity 150ms ease, transform 150ms ease;
+}
+
+/* Aria-label tips use Obsidian’s .tooltip (~layer 60), which sat under the popover. */
+.tooltip {
+	z-index: 1100;
 }
 
 .byc-popover.is-open {
