@@ -244,6 +244,24 @@ export class LinearYearCalendarSettingTab extends PluginSettingTab {
 				});
 			})
 			.addExtraButton((btn) => {
+				btn
+					.setIcon("check")
+					.setTooltip("Test URL")
+					.setDisabled(this.plugin.icsBusy)
+					.onClick(() => {
+						void this.plugin.testIcsSource(source);
+					});
+			})
+			.addExtraButton((btn) => {
+				btn
+					.setIcon("refresh-cw")
+					.setTooltip("Refresh this calendar")
+					.setDisabled(this.plugin.icsBusy)
+					.onClick(() => {
+						void this.refreshSource(source);
+					});
+			})
+			.addExtraButton((btn) => {
 				btn.setIcon("trash-2").setTooltip("Remove").onClick(() => {
 					const name = source.name.trim() || "this calendar";
 					new ConfirmModal(
@@ -268,6 +286,12 @@ export class LinearYearCalendarSettingTab extends PluginSettingTab {
 		await this.plugin.saveSettings();
 		this.display();
 		this.scrollToIcsSource(source.id, true);
+	}
+
+	private async refreshSource(source: IcsSource): Promise<void> {
+		await this.plugin.refreshIcs(source.id);
+		this.display();
+		this.scrollToIcsSource(source.id);
 	}
 
 	private scrollToIcsSource(id: string, focusUrl = false): void {
