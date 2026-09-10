@@ -1,6 +1,6 @@
 import "./obsidian-dom-shim";
 import { renderCalendar } from "../src/ui";
-import type { CalendarEvent, ViewMode } from "../src/types";
+import type { CalendarEvent, IcsSource, ViewMode } from "../src/types";
 
 const events: CalendarEvent[] = [
 	{
@@ -230,13 +230,33 @@ function setPreviewStatus(message: string): void {
 	statusEl.hidden = !message;
 }
 
+const icsSources: IcsSource[] = [
+	{
+		id: "preview-work",
+		name: "Work",
+		url: "https://calendar.google.com/calendar/ical/work/basic.ics",
+		color: "#C5B3E0",
+		enabled: true,
+	},
+	{
+		id: "preview-family",
+		name: "Family Events",
+		url: "https://calendar.google.com/calendar/ical/family/basic.ics",
+		color: "#F0C987",
+		enabled: true,
+	},
+];
+
 const state = {
 	year: 2026,
 	mode: "stacked" as ViewMode,
 	weekStartsOn: 0,
 	events,
 	eventsFolder: "Calendar",
-	icsCalendarNames: ["Work"],
+	icsSources,
+	defaultCalendar: "Personal",
+	googleHolidaysEnabled: false,
+	googleHolidaysColor: "#F0C987",
 	hiddenCalendars: new Set<string>(),
 	search: "",
 	todayIso: "2026-09-07",
@@ -281,13 +301,17 @@ function paint(): void {
 				state.wideLayout = !state.wideLayout;
 				paint();
 			},
-			onToggleCalendar: (name) => {
-				if (state.hiddenCalendars.has(name)) state.hiddenCalendars.delete(name);
-				else state.hiddenCalendars.add(name);
+			onToggleCalendar: (id) => {
+				if (state.hiddenCalendars.has(id)) state.hiddenCalendars.delete(id);
+				else state.hiddenCalendars.add(id);
 				paint();
 			},
 			onShowAllCalendars: () => {
 				state.hiddenCalendars.clear();
+				paint();
+			},
+			onHideAllCalendars: (ids) => {
+				state.hiddenCalendars = new Set(ids);
 				paint();
 			},
 			onEventClick: (event, _anchor) => {

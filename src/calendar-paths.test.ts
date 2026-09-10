@@ -1,14 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
 	GOOGLE_FOLDER,
+	calendarFilterId,
 	eventFromNoteFilename,
 	googleCalendarDayUrl,
 	googleCalendarFolder,
 	isGoogleEvent,
 	isGooglePath,
+	listFilterCalendars,
 	localCalendarFolder,
 	localCalendarNames,
 	mergeLocalCalendarNames,
+	migrateHiddenCalendarIds,
 	notePathInFolder,
 	partitionCalendars,
 	sanitizeCalendarName,
@@ -94,6 +97,139 @@ describe("calendar-paths", () => {
 			local: ["Personal"],
 			google: ["Family Events", "Work"],
 		});
+	});
+
+	it("keys local and Google calendars with the same name separately", () => {
+		const localWork = {
+			id: "1",
+			title: "Local Work",
+			start: "2026-01-01",
+			end: "2026-01-01",
+			color: "#A9C7E8",
+			calendar: "Work",
+			path: "Calendar/Work/a.md",
+		};
+		const googleWork = {
+			id: "2",
+			title: "Google Work",
+			start: "2026-01-02",
+			end: "2026-01-02",
+			color: "#C5B3E0",
+			calendar: "Work",
+			path: "Calendar/google/Work/b.md",
+			icsUid: "b@google.com",
+		};
+		const sources = [
+			{
+				id: "src-work",
+				name: "Work",
+				url: "https://example.com/work.ics",
+				color: "#C5B3E0",
+				enabled: true,
+			},
+			{
+				id: "src-family",
+				name: "Family Events",
+				url: "https://example.com/family.ics",
+				color: "#F0C987",
+				enabled: true,
+			},
+		];
+		expect(calendarFilterId(localWork, "Calendar", sources)).toBe("local:Work");
+		expect(calendarFilterId(googleWork, "Calendar", sources)).toBe("google:src-work");
+		expect(
+			listFilterCalendars({
+				events: [localWork, googleWork],
+				eventsFolder: "Calendar",
+				icsSources: sources,
+				defaultCalendar: "Personal",
+				googleHolidaysEnabled: false,
+				googleHolidaysColor: "#F0C987",
+			}),
+		).toEqual({
+			local: [
+				{
+					id: "local:Personal",
+					name: "Personal",
+					kind: "local",
+					color: "#A9C7E8",
+					eventCount: 0,
+					imported: true,
+				},
+				{
+					id: "local:Work",
+					name: "Work",
+					kind: "local",
+					color: "#A9C7E8",
+					eventCount: 1,
+					imported: true,
+				},
+			],
+			google: [
+				{
+					id: "google:src-family",
+					name: "Family Events",
+					kind: "google",
+					color: "#F0C987",
+					eventCount: 0,
+					imported: false,
+				},
+				{
+					id: "google:src-work",
+					name: "Work",
+					kind: "google",
+					color: "#C5B3E0",
+					eventCount: 1,
+					imported: true,
+				},
+			],
+		});
+	});
+
+	it("maps holidays to a stable google source id", () => {
+		expect(
+			calendarFilterId(
+				{
+					calendar: "Google Holidays",
+					path: "Calendar/google/Google Holidays/x.md",
+					icsUid: "holiday@google.com",
+				},
+				"Calendar",
+				[],
+			),
+		).toBe("google:google-us-holidays");
+	});
+
+	it("keeps orphan Google notes filterable after the source is removed", () => {
+		expect(
+			calendarFilterId(
+				{
+					calendar: "Annual Events",
+					path: "Calendar/google/Annual Events/x.md",
+					icsUid: "x@google.com",
+				},
+				"Calendar",
+				[],
+			),
+		).toBe("google:name:Annual Events");
+	});
+
+	it("expands pre-v7 hidden names into local and google ids", () => {
+		expect(
+			migrateHiddenCalendarIds(["Work", "local:Home"], [
+				{
+					id: "src-work",
+					name: "Work",
+					url: "https://example.com/work.ics",
+					color: "#C5B3E0",
+					enabled: true,
+				},
+			]),
+		).toEqual(["local:Work", "google:src-work", "local:Home"]);
+		expect(migrateHiddenCalendarIds(["Google Holidays"], [])).toEqual([
+			"local:Google Holidays",
+			"google:google-us-holidays",
+		]);
 	});
 
 	it("recovers events from dated filenames when Properties are missing", () => {

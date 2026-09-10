@@ -18,7 +18,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	wideLayout: false,
 	lastIcsRefreshAt: "",
 	icsRefreshResults: [],
-	settingsVersion: 6,
+	settingsVersion: 7,
 };
 
 function parseViewMode(value: string): ViewMode {

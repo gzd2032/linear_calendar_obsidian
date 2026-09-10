@@ -29,6 +29,7 @@ const WEEKDAY_CODES: Record<string, number> = {
 };
 
 export const GOOGLE_HOLIDAYS_NAME = "Google Holidays";
+export const GOOGLE_US_HOLIDAYS_SOURCE_ID = "google-us-holidays";
 export const GOOGLE_US_HOLIDAYS_ICS_URL =
 	"https://calendar.google.com/calendar/ical/en.usa%23holiday%40group.v.calendar.google.com/public/basic.ics";
 

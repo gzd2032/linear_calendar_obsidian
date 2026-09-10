@@ -1,5 +1,12 @@
 import { sanitizeFilename } from "./format";
-import type { CalendarEvent } from "./types";
+import type { CalendarEvent, FilterCalendar, IcsSource } from "./types";
+
+const LOCAL_FILTER_PREFIX = "local:";
+const GOOGLE_FILTER_PREFIX = "google:";
+const GOOGLE_NAME_FILTER_PREFIX = "google:name:";
+const DEFAULT_FILTER_COLOR = "#A9C7E8";
+const DEFAULT_HOLIDAYS_NAME = "Google Holidays";
+const DEFAULT_HOLIDAYS_SOURCE_ID = "google-us-holidays";
 
 /** Reserved folder name under the events root for ICS imports. */
 export const GOOGLE_FOLDER = "google";
@@ -120,6 +127,157 @@ export function partitionCalendars(
 		local: [...local].sort((a, b) => a.localeCompare(b)),
 		google: [...google].sort((a, b) => a.localeCompare(b)),
 	};
+}
+
+function sourceMatchingName(icsSources: IcsSource[], name: string): IcsSource | undefined {
+	const trimmed = name.trim();
+	return icsSources.find((source) => source.name.trim() === trimmed);
+}
+
+/** Stable hide/show key: `local:Personal` or `google:<source-id>`. */
+export function calendarFilterId(
+	event: Pick<CalendarEvent, "calendar" | "path" | "icsUid">,
+	eventsFolder: string,
+	icsSources: IcsSource[],
+	holidaysName = DEFAULT_HOLIDAYS_NAME,
+	holidaysSourceId = DEFAULT_HOLIDAYS_SOURCE_ID,
+): string {
+	const name = event.calendar?.trim() || "Personal";
+	if (!isGoogleEvent(event, eventsFolder)) {
+		return `${LOCAL_FILTER_PREFIX}${sanitizeCalendarName(name)}`;
+	}
+	if (name === holidaysName) {
+		return `${GOOGLE_FILTER_PREFIX}${holidaysSourceId}`;
+	}
+	const source = sourceMatchingName(icsSources, name);
+	if (source) return `${GOOGLE_FILTER_PREFIX}${source.id}`;
+	return `${GOOGLE_NAME_FILTER_PREFIX}${sanitizeFilename(name)}`;
+}
+
+function isPrefixedFilterId(value: string): boolean {
+	return value.startsWith(LOCAL_FILTER_PREFIX) || value.startsWith(GOOGLE_FILTER_PREFIX);
+}
+
+/** Expand pre-v7 hidden names (`Work`) into `local:` + matching `google:` ids. */
+export function migrateHiddenCalendarIds(
+	hidden: string[],
+	icsSources: IcsSource[],
+	holidaysName = DEFAULT_HOLIDAYS_NAME,
+	holidaysSourceId = DEFAULT_HOLIDAYS_SOURCE_ID,
+): string[] {
+	const next = new Set<string>();
+	for (const entry of hidden) {
+		const value = entry.trim();
+		if (!value) continue;
+		if (isPrefixedFilterId(value)) {
+			next.add(value);
+			continue;
+		}
+		next.add(`${LOCAL_FILTER_PREFIX}${sanitizeCalendarName(value)}`);
+		if (value === holidaysName) {
+			next.add(`${GOOGLE_FILTER_PREFIX}${holidaysSourceId}`);
+		}
+		for (const source of icsSources) {
+			if (source.name.trim() === value) {
+				next.add(`${GOOGLE_FILTER_PREFIX}${source.id}`);
+			}
+		}
+	}
+	return [...next];
+}
+
+export function listFilterCalendars(input: {
+	events: CalendarEvent[];
+	eventsFolder: string;
+	icsSources: IcsSource[];
+	defaultCalendar: string;
+	googleHolidaysEnabled: boolean;
+	googleHolidaysColor: string;
+	holidaysName?: string;
+	holidaysSourceId?: string;
+}): { local: FilterCalendar[]; google: FilterCalendar[] } {
+	const holidaysName = input.holidaysName ?? DEFAULT_HOLIDAYS_NAME;
+	const holidaysSourceId = input.holidaysSourceId ?? DEFAULT_HOLIDAYS_SOURCE_ID;
+	const counts = new Map<string, { count: number; color: string; name: string }>();
+	for (const event of input.events) {
+		const id = calendarFilterId(
+			event,
+			input.eventsFolder,
+			input.icsSources,
+			holidaysName,
+			holidaysSourceId,
+		);
+		const cur = counts.get(id);
+		if (cur) cur.count += 1;
+		else {
+			counts.set(id, {
+				count: 1,
+				color: event.color,
+				name: event.calendar.trim() || "Personal",
+			});
+		}
+	}
+
+	const local: FilterCalendar[] = localCalendarNames(
+		input.events,
+		input.eventsFolder,
+		input.defaultCalendar,
+	).map((name) => {
+		const id = `${LOCAL_FILTER_PREFIX}${name}`;
+		const meta = counts.get(id);
+		return {
+			id,
+			name,
+			kind: "local",
+			color: meta?.color ?? DEFAULT_FILTER_COLOR,
+			eventCount: meta?.count ?? 0,
+			imported: true,
+		};
+	});
+
+	const google: FilterCalendar[] = [];
+	const seen = new Set<string>();
+	for (const source of input.icsSources) {
+		const id = `${GOOGLE_FILTER_PREFIX}${source.id}`;
+		seen.add(id);
+		const meta = counts.get(id);
+		const eventCount = meta?.count ?? 0;
+		google.push({
+			id,
+			name: source.name.trim() || "Google Calendar",
+			kind: "google",
+			color: meta?.color ?? source.color,
+			eventCount,
+			imported: eventCount > 0,
+		});
+	}
+	if (input.googleHolidaysEnabled) {
+		const id = `${GOOGLE_FILTER_PREFIX}${holidaysSourceId}`;
+		seen.add(id);
+		const meta = counts.get(id);
+		const eventCount = meta?.count ?? 0;
+		google.push({
+			id,
+			name: holidaysName,
+			kind: "google",
+			color: meta?.color ?? input.googleHolidaysColor,
+			eventCount,
+			imported: eventCount > 0,
+		});
+	}
+	for (const [id, meta] of counts) {
+		if (!id.startsWith(GOOGLE_FILTER_PREFIX) || seen.has(id)) continue;
+		google.push({
+			id,
+			name: meta.name,
+			kind: "google",
+			color: meta.color,
+			eventCount: meta.count,
+			imported: meta.count > 0,
+		});
+	}
+	google.sort((a, b) => a.name.localeCompare(b.name));
+	return { local, google };
 }
 
 /** Calendar name from `Calendar/<Name>/note` or `Calendar/google/<Name>/note`. */
