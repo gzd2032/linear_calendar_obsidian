@@ -27,7 +27,7 @@
 }
 
 .byc-root {
-	--byc-event-inset-x: 4px;
+	--byc-event-inset-x: 6px;
 	height: 100%;
 	display: flex;
 	flex-direction: column;
@@ -502,7 +502,7 @@ button.byc-mode-option:focus-visible {
 	--byc-wide-dayhead: 20px;
 	--byc-wide-lane: 30px;
 	--byc-wide-pad: 4px;
-	--byc-event-inset-x: 6px;
+	--byc-event-inset-x: 8px;
 }
 
 .byc-root.is-wide .byc-table {
