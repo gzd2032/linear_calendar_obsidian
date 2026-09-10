@@ -124,16 +124,54 @@ export class EventCreateModal extends Modal {
 		});
 
 		const colorSetting = new Setting(contentEl).setName("Color");
-		const row = colorSetting.controlEl.createDiv({ cls: "byc-color-row" });
-		for (const color of PASTEL_COLORS) {
-			const dot = row.createDiv({ cls: "byc-color-dot" });
-			dot.style.background = color;
-			if (color === this.draft.color) dot.addClass("is-active");
-			dot.addEventListener("click", () => {
-				this.draft.color = color;
-				row.querySelectorAll(".byc-color-dot").forEach((node) => node.removeClass("is-active"));
-				dot.addClass("is-active");
+		const row = colorSetting.controlEl.createDiv({
+			cls: "byc-color-row",
+			attr: { role: "group", "aria-label": "Event color" },
+		});
+		const dots: HTMLButtonElement[] = [];
+		const selectColor = (index: number, focus = true): void => {
+			const color = PASTEL_COLORS[index];
+			if (!color) return;
+			this.draft.color = color;
+			for (const [i, node] of dots.entries()) {
+				const active = i === index;
+				node.classList.toggle("is-active", active);
+				node.setAttribute("aria-pressed", active ? "true" : "false");
+				node.tabIndex = active ? 0 : -1;
+			}
+			if (focus) dots[index]?.focus();
+		};
+		for (const [index, color] of PASTEL_COLORS.entries()) {
+			const active = color === this.draft.color;
+			const dot = row.createEl("button", {
+				cls: "byc-color-dot",
+				attr: {
+					type: "button",
+					"aria-label": `Color ${index + 1}`,
+					"aria-pressed": active ? "true" : "false",
+					title: color,
+				},
 			});
+			dot.style.background = color;
+			dot.tabIndex = active ? 0 : -1;
+			if (active) dot.addClass("is-active");
+			dot.addEventListener("click", () => selectColor(index));
+			dot.addEventListener("keydown", (event: KeyboardEvent) => {
+				const keys = ["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp", "Home", "End"];
+				if (!keys.includes(event.key)) return;
+				event.preventDefault();
+				const last = PASTEL_COLORS.length - 1;
+				let next = index;
+				if (event.key === "ArrowRight" || event.key === "ArrowDown") next = index === last ? 0 : index + 1;
+				else if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = index === 0 ? last : index - 1;
+				else if (event.key === "Home") next = 0;
+				else if (event.key === "End") next = last;
+				selectColor(next);
+			});
+			dots.push(dot);
+		}
+		if (!dots.some((dot) => dot.classList.contains("is-active"))) {
+			selectColor(0, false);
 		}
 
 		new Setting(contentEl).addButton((btn) => {

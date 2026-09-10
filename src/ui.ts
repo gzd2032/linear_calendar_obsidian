@@ -3,6 +3,7 @@ import { div, el, mount, setCssProps } from "./dom";
 import { contrastingTextColor } from "./format";
 import {
 	buildYearGrid,
+	formatEventRange,
 	formatEventTooltip,
 	formatISODate,
 	maxLanes,
@@ -15,6 +16,7 @@ import type { CalendarEvent, ViewMode, YearGrid } from "./types";
 import {
 	chevronLeft,
 	chevronRight,
+	closeMenus,
 	compressIcon,
 	emptyState,
 	expandIcon,
@@ -89,7 +91,7 @@ export function renderCalendar(
 	const todayYear = Number(state.todayIso.slice(0, 4));
 	const todayDate = parseISODate(state.todayIso);
 
-	const { displayMenu, filtersMenu } = renderToolbar(
+	const { displayMenu, filtersMenu, displayBtn, filterBtn } = renderToolbar(
 		root,
 		state,
 		handlers,
@@ -155,15 +157,28 @@ export function renderCalendar(
 		}
 	}
 
-	bindMenuDismiss(root, [displayMenu, filtersMenu]);
+	bindMenuDismiss(root, [displayMenu, filtersMenu], [displayBtn, filterBtn]);
 }
 
-const menuDismiss = new WeakMap<HTMLElement, { menus: HTMLElement[]; onClick: (event: MouseEvent) => void }>();
+const menuDismiss = new WeakMap<
+	HTMLElement,
+	{
+		menus: HTMLElement[];
+		buttons: HTMLButtonElement[];
+		onClick: (event: MouseEvent) => void;
+		onKeyDown: (event: KeyboardEvent) => void;
+	}
+>();
 
-function bindMenuDismiss(root: HTMLElement, menus: HTMLElement[]): void {
+function bindMenuDismiss(
+	root: HTMLElement,
+	menus: HTMLElement[],
+	buttons: HTMLButtonElement[],
+): void {
 	const existing = menuDismiss.get(root);
 	if (existing) {
 		existing.menus = menus;
+		existing.buttons = buttons;
 		return;
 	}
 	const onClick = (event: MouseEvent) => {
@@ -171,16 +186,27 @@ function bindMenuDismiss(root: HTMLElement, menus: HTMLElement[]): void {
 		if (!state) return;
 		const target = event.target as HTMLElement | null;
 		if (target?.closest(".byc-menu-wrap")) return;
-		for (const menu of state.menus) menu.classList.add("is-hidden");
+		closeMenus(state.menus, state.buttons);
 	};
-	menuDismiss.set(root, { menus, onClick });
+	const onKeyDown = (event: KeyboardEvent) => {
+		if (event.key !== "Escape") return;
+		const state = menuDismiss.get(root);
+		if (!state) return;
+		const anyOpen = state.menus.some((menu) => !menu.classList.contains("is-hidden"));
+		if (!anyOpen) return;
+		closeMenus(state.menus, state.buttons);
+		event.preventDefault();
+	};
+	menuDismiss.set(root, { menus, buttons, onClick, onKeyDown });
 	document.addEventListener("click", onClick);
+	document.addEventListener("keydown", onKeyDown);
 }
 
 export function teardownCalendarUi(root: HTMLElement): void {
 	const state = menuDismiss.get(root);
 	if (!state) return;
 	document.removeEventListener("click", state.onClick);
+	document.removeEventListener("keydown", state.onKeyDown);
 	menuDismiss.delete(root);
 }
 
@@ -202,7 +228,12 @@ function renderToolbar(
 	handlers: CalendarUIHandlers,
 	calendars: { local: string[]; google: string[]; all: string[] },
 	hiddenCount: number,
-): { displayMenu: HTMLElement; filtersMenu: HTMLElement } {
+): {
+	displayMenu: HTMLElement;
+	filtersMenu: HTMLElement;
+	displayBtn: HTMLButtonElement;
+	filterBtn: HTMLButtonElement;
+} {
 	const toolbar = mount(root, div("byc-toolbar"));
 	const left = mount(toolbar, div("byc-toolbar-left"));
 	mount(left, el("h1", { cls: "byc-year", text: String(state.year) }));
@@ -240,6 +271,7 @@ function renderToolbar(
 			cls: "byc-search-input",
 			type: "search",
 			placeholder: "Search events",
+			attr: { "aria-label": "Search events" },
 		}),
 	) as HTMLInputElement;
 	searchInput.value = state.search;
@@ -248,9 +280,24 @@ function renderToolbar(
 	const displayWrap = mount(right, div("byc-menu-wrap"));
 	const displayBtn = mount(
 		displayWrap,
-		el("button", { cls: "byc-btn byc-view-btn", text: viewLabel(state.mode) }),
+		el("button", {
+			cls: "byc-btn byc-view-btn",
+			type: "button",
+			text: viewLabel(state.mode),
+			attr: {
+				"aria-haspopup": "menu",
+				"aria-expanded": "false",
+				"aria-controls": "byc-display-menu",
+			},
+		}),
+	) as HTMLButtonElement;
+	const displayMenu = mount(
+		displayWrap,
+		el("div", {
+			cls: "byc-menu byc-menu-compact is-hidden",
+			attr: { id: "byc-display-menu", role: "menu" },
+		}),
 	);
-	const displayMenu = mount(displayWrap, div("byc-menu byc-menu-compact is-hidden"));
 	for (const [title, mode] of [
 		["Stacked", "stacked"],
 		["Linear", "linear"],
@@ -270,19 +317,31 @@ function renderToolbar(
 		filterWrap,
 		el("button", {
 			cls: `byc-btn byc-btn-accent${hiddenCount > 0 ? " is-filtering" : ""}`,
+			type: "button",
 			text: filterLabel,
+			attr: {
+				"aria-haspopup": "menu",
+				"aria-expanded": "false",
+				"aria-controls": "byc-filters-menu",
+			},
+		}),
+	) as HTMLButtonElement;
+	const filtersMenu = mount(
+		filterWrap,
+		el("div", {
+			cls: "byc-menu byc-menu-filters is-hidden",
+			attr: { id: "byc-filters-menu", role: "menu" },
 		}),
 	);
-	const filtersMenu = mount(filterWrap, div("byc-menu byc-menu-filters is-hidden"));
 	renderFiltersMenu(filtersMenu, calendars, state, handlers);
 
 	displayBtn.addEventListener("click", (event) => {
 		event.stopPropagation();
-		toggleMenu(displayMenu, filtersMenu);
+		toggleMenu(displayMenu, filtersMenu, displayBtn, filterBtn);
 	});
 	filterBtn.addEventListener("click", (event) => {
 		event.stopPropagation();
-		toggleMenu(filtersMenu, displayMenu);
+		toggleMenu(filtersMenu, displayMenu, filterBtn, displayBtn);
 	});
 
 	if (handlers.onRefresh) {
@@ -291,7 +350,7 @@ function renderToolbar(
 		);
 	}
 
-	return { displayMenu, filtersMenu };
+	return { displayMenu, filtersMenu, displayBtn, filterBtn };
 }
 
 function renderFiltersMenu(
@@ -342,7 +401,14 @@ function addModeOption(
 	active: ViewMode,
 	handlers: CalendarUIHandlers,
 ): void {
-	const option = mount(menu, el("button", { cls: "byc-mode-option" }));
+	const option = mount(
+		menu,
+		el("button", {
+			cls: "byc-mode-option",
+			type: "button",
+			attr: { role: "menuitem" },
+		}),
+	);
 	if (mode === active) option.classList.add("is-active");
 	option.textContent = title;
 	option.addEventListener("click", () => handlers.onModeChange(mode));
@@ -495,7 +561,19 @@ function mountEventBar(
 	handlers: CalendarUIHandlers,
 	column: boolean,
 ): void {
-	const bar = mount(parent, div(column ? "byc-event byc-column-event" : "byc-event"));
+	const range = formatEventRange(segment.event.start, segment.event.end);
+	const bar = mount(
+		parent,
+		el("button", {
+			cls: column ? "byc-event byc-column-event" : "byc-event",
+			type: "button",
+			text: segment.event.title,
+			title: formatEventTooltip(segment.event),
+			attr: {
+				"aria-label": `${segment.event.title}, ${range}`,
+			},
+		}),
+	) as HTMLButtonElement;
 	if (column) {
 		bar.style.gridRow = `${segment.startCol + 1} / ${segment.endCol + 2}`;
 		bar.style.gridColumn = String(segment.lane + 2);
@@ -506,8 +584,6 @@ function mountEventBar(
 	bar.dataset.eventId = segment.event.id;
 	bar.style.background = segment.event.color;
 	bar.style.color = contrastingTextColor(segment.event.color);
-	bar.textContent = segment.event.title;
-	bar.title = formatEventTooltip(segment.event);
 	bar.addEventListener("click", (event) => {
 		event.stopPropagation();
 		handlers.onEventClick(segment.event, bar);

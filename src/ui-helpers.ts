@@ -34,7 +34,7 @@ export function iconButton(
 ): HTMLButtonElement {
 	const button = mount(
 		parent,
-		el("button", { cls: "byc-icon-btn", attr: { "aria-label": label, title: label } }),
+		el("button", { cls: "byc-icon-btn", type: "button", attr: { "aria-label": label, title: label } }),
 	) as HTMLButtonElement;
 	button.appendChild(icon);
 	return button;
@@ -112,9 +112,22 @@ export function uniqueCalendars(events: { calendar: string }[]): string[] {
 	return [...new Set(events.map((event) => event.calendar))].sort();
 }
 
-export function toggleMenu(target: HTMLElement, other: HTMLElement): void {
+export function toggleMenu(
+	target: HTMLElement,
+	other: HTMLElement,
+	targetBtn?: HTMLButtonElement,
+	otherBtn?: HTMLButtonElement,
+): void {
 	other.classList.add("is-hidden");
+	otherBtn?.setAttribute("aria-expanded", "false");
 	target.classList.toggle("is-hidden");
+	const open = !target.classList.contains("is-hidden");
+	targetBtn?.setAttribute("aria-expanded", open ? "true" : "false");
+}
+
+export function closeMenus(menus: HTMLElement[], buttons: HTMLButtonElement[]): void {
+	for (const menu of menus) menu.classList.add("is-hidden");
+	for (const button of buttons) button.setAttribute("aria-expanded", "false");
 }
 
 export function padDay(day: number): string {
