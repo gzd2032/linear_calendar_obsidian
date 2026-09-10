@@ -21,6 +21,12 @@ export interface IcsSource {
 	enabled: boolean;
 }
 
+export interface IcsRefreshResult {
+	name: string;
+	ok: boolean;
+	detail: string;
+}
+
 export interface PluginSettings {
 	eventsFolder: string;
 	weekStartsOn: number;
@@ -32,6 +38,10 @@ export interface PluginSettings {
 	googleHolidaysEnabled: boolean;
 	googleHolidaysColor: string;
 	wideLayout: boolean;
+	/** ISO timestamp of the last ICS refresh attempt. */
+	lastIcsRefreshAt: string;
+	/** Per-calendar outcome from the last refresh. */
+	icsRefreshResults: IcsRefreshResult[];
 	settingsVersion: number;
 }
 

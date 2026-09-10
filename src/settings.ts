@@ -14,7 +14,9 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	googleHolidaysEnabled: false,
 	googleHolidaysColor: "#F0C987",
 	wideLayout: false,
-	settingsVersion: 5,
+	lastIcsRefreshAt: "",
+	icsRefreshResults: [],
+	settingsVersion: 6,
 };
 
 function parseViewMode(value: string): ViewMode {
@@ -101,6 +103,19 @@ export class LinearYearCalendarSettingTab extends PluginSettingTab {
 		});
 
 		new Setting(containerEl).setName("Google Calendar (ICS)").setHeading();
+
+		const lastAt = this.plugin.settings.lastIcsRefreshAt;
+		const results = this.plugin.settings.icsRefreshResults ?? [];
+		if (lastAt || results.length > 0) {
+			const when = lastAt ? formatRefreshTime(lastAt) : "Never";
+			const lines =
+				results.length > 0
+					? results.map((r) => `${r.ok ? "✓" : "✗"} ${r.name}: ${r.detail}`).join("\n")
+					: "No calendar results yet.";
+			new Setting(containerEl)
+				.setName(`Last ICS refresh · ${when}`)
+				.setDesc(lines);
+		}
 
 		new Setting(containerEl)
 			.setName("All-day events only")
@@ -222,4 +237,15 @@ export class LinearYearCalendarSettingTab extends PluginSettingTab {
 		await this.plugin.saveSettings();
 		this.display();
 	}
+}
+
+function formatRefreshTime(iso: string): string {
+	const date = new Date(iso);
+	if (Number.isNaN(date.getTime())) return iso;
+	return date.toLocaleString(undefined, {
+		month: "short",
+		day: "numeric",
+		hour: "numeric",
+		minute: "2-digit",
+	});
 }

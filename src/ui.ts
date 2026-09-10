@@ -27,6 +27,7 @@ import {
 	iconButton,
 	padDay,
 	refreshIcon,
+	spinnerIcon,
 	toggleMenu,
 	viewLabel,
 } from "./ui-helpers";
@@ -49,6 +50,12 @@ export interface CalendarUIState {
 	scrollToToday?: boolean;
 	/** When true (pane ≤ {@link NARROW_MAX_WIDTH_PX}), render compact month-list. */
 	narrow?: boolean;
+	/** ICS refresh in flight — disable refresh control. */
+	icsImporting?: boolean;
+	/** Short label for last refresh time (toolbar). */
+	icsLastRefreshLabel?: string;
+	/** Tooltip / title with per-calendar refresh status. */
+	icsRefreshStatusTitle?: string;
 }
 
 export interface CalendarUIHandlers {
@@ -59,7 +66,7 @@ export interface CalendarUIHandlers {
 	onToggleCalendar: (name: string) => void;
 	onShowAllCalendars?: () => void;
 	onToggleWideLayout: () => void;
-	onEventClick: (event: CalendarEvent, anchor: HTMLElement) => void;
+	onEventClick: (event: CalendarEvent, anchor: HTMLElement, pointer?: { x: number; y: number }) => void;
 	onRangeSelect: (start: string, end: string) => void;
 	onRefresh?: () => void;
 }
@@ -382,9 +389,41 @@ function renderToolbar(
 	}
 
 	if (handlers.onRefresh) {
-		iconButton(right, "Refresh ICS calendars", refreshIcon()).addEventListener("click", () =>
-			handlers.onRefresh?.(),
-		);
+		const importing = Boolean(state.icsImporting);
+		if (importing) {
+			const busy = mount(
+				right,
+				el("button", {
+					cls: "byc-icon-btn byc-refresh-btn is-importing",
+					type: "button",
+					text: "",
+					attr: {
+						disabled: "true",
+						"aria-busy": "true",
+						"aria-label": "Importing…",
+						title: "Importing…",
+					},
+				}),
+			) as HTMLButtonElement;
+			busy.appendChild(spinnerIcon());
+			busy.appendChild(el("span", { cls: "byc-refresh-label", text: "Importing…" }));
+		} else {
+			const btn = iconButton(right, "Refresh ICS calendars", refreshIcon());
+			btn.classList.add("byc-refresh-btn");
+			btn.addEventListener("click", () => handlers.onRefresh?.());
+		}
+		if (state.icsLastRefreshLabel) {
+			mount(
+				right,
+				el("span", {
+					cls: "byc-refresh-meta",
+					text: state.icsLastRefreshLabel,
+					attr: {
+						title: state.icsRefreshStatusTitle || state.icsLastRefreshLabel,
+					},
+				}),
+			);
+		}
 	}
 
 	return { menus, buttons };
@@ -699,7 +738,7 @@ function renderMonthList(
 				eventBtn.style.color = contrastingTextColor(event.color);
 				eventBtn.addEventListener("click", (ev) => {
 					ev.stopPropagation();
-					handlers.onEventClick(event, eventBtn);
+					handlers.onEventClick(event, eventBtn, { x: ev.clientX, y: ev.clientY });
 				});
 			}
 		}
@@ -737,7 +776,7 @@ function mountEventBar(
 	bar.style.color = contrastingTextColor(segment.event.color);
 	bar.addEventListener("click", (event) => {
 		event.stopPropagation();
-		handlers.onEventClick(segment.event, bar);
+		handlers.onEventClick(segment.event, bar, { x: event.clientX, y: event.clientY });
 	});
 	bar.addEventListener("pointerdown", (event) => event.stopPropagation());
 }

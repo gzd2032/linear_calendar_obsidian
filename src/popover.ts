@@ -18,6 +18,8 @@ export class EventDetailPopover {
 	private anchor: HTMLElement | null = null;
 	private onDocPointer: ((ev: PointerEvent) => void) | null = null;
 	private onKeyDown: ((ev: KeyboardEvent) => void) | null = null;
+	private onScroll: ((ev: Event) => void) | null = null;
+	private pointer: { x: number; y: number } | null = null;
 
 	constructor(
 		private app: App,
@@ -44,10 +46,14 @@ export class EventDetailPopover {
 		if (!this.root || this.openEventId !== event.id) return;
 		this.activeEvent = event;
 		this.anchor = anchor;
-		this.position(this.root, anchor);
+		this.position(this.root, anchor, this.pointer);
 	}
 
-	open(event: CalendarEvent, anchor: HTMLElement): void {
+	open(
+		event: CalendarEvent,
+		anchor: HTMLElement,
+		pointer?: { x: number; y: number },
+	): void {
 		if (this.isOpenFor(event.id)) {
 			this.close();
 			return;
@@ -57,6 +63,7 @@ export class EventDetailPopover {
 		this.openEventId = event.id;
 		this.activeEvent = event;
 		this.anchor = anchor;
+		this.pointer = pointer ?? null;
 		const token = ++this.openToken;
 		const google = isGoogleEvent(event, this.getEventsFolder());
 
@@ -149,7 +156,7 @@ export class EventDetailPopover {
 			});
 		}
 
-		this.position(pop, anchor);
+		this.position(pop, anchor, this.pointer);
 		window.requestAnimationFrame(() => pop.classList.add("is-open"));
 
 		this.onDocPointer = (ev: PointerEvent) => {
@@ -180,9 +187,13 @@ export class EventDetailPopover {
 				void this.deleteEvent(this.activeEvent);
 			}
 		};
+		this.onScroll = () => {
+			this.close();
+		};
 		window.setTimeout(() => {
 			if (this.onDocPointer) document.addEventListener("pointerdown", this.onDocPointer);
 			if (this.onKeyDown) document.addEventListener("keydown", this.onKeyDown);
+			if (this.onScroll) document.addEventListener("scroll", this.onScroll, true);
 		}, 0);
 
 		if (event.path) {
@@ -192,7 +203,7 @@ export class EventDetailPopover {
 				if (!preview) return;
 				descEl.textContent = preview;
 				descEl.hidden = false;
-				this.position(pop, this.anchor);
+				this.position(pop, this.anchor, this.pointer);
 			});
 		}
 	}
@@ -206,11 +217,16 @@ export class EventDetailPopover {
 			document.removeEventListener("keydown", this.onKeyDown);
 			this.onKeyDown = null;
 		}
+		if (this.onScroll) {
+			document.removeEventListener("scroll", this.onScroll, true);
+			this.onScroll = null;
+		}
 		this.root?.remove();
 		this.root = null;
 		this.openEventId = null;
 		this.activeEvent = null;
 		this.anchor = null;
+		this.pointer = null;
 	}
 
 	private openNote(event: CalendarEvent): void {
@@ -232,22 +248,37 @@ export class EventDetailPopover {
 		window.open(url, "_blank");
 	}
 
-	private position(pop: HTMLElement, anchor: HTMLElement): void {
+	private position(
+		pop: HTMLElement,
+		anchor: HTMLElement,
+		pointer?: { x: number; y: number } | null,
+	): void {
 		const rect = anchor.getBoundingClientRect();
 		const popW = 280;
-		let left = rect.left;
-		let top = rect.bottom + 8;
+		const pad = 12;
+		const offset = 8;
 
-		left = Math.max(12, Math.min(left, window.innerWidth - popW - 12));
+		let left: number;
+		let top: number;
+		if (pointer) {
+			// Prefer the click point so long multi-day bars open near the cursor.
+			left = pointer.x + offset;
+			top = pointer.y + offset;
+		} else {
+			left = rect.left;
+			top = rect.bottom + offset;
+		}
+
+		left = Math.max(pad, Math.min(left, window.innerWidth - popW - pad));
 		pop.style.left = `${left}px`;
 		pop.style.top = `${top}px`;
 		pop.style.width = `${popW}px`;
 
 		window.requestAnimationFrame(() => {
 			const h = pop.offsetHeight;
-			if (top + h > window.innerHeight - 12) {
-				const above = rect.top - h - 8;
-				if (above > 12) pop.style.top = `${above}px`;
+			if (top + h > window.innerHeight - pad) {
+				const above = (pointer?.y ?? rect.top) - h - offset;
+				if (above > pad) pop.style.top = `${above}px`;
 			}
 		});
 	}

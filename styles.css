@@ -89,6 +89,41 @@
 	justify-content: center;
 }
 
+.byc-refresh-btn.is-importing {
+	width: auto;
+	min-width: 32px;
+	height: 32px;
+	padding: 0 10px;
+	gap: 6px;
+	opacity: 0.85;
+	cursor: default;
+}
+
+.byc-refresh-label {
+	font-size: 12px;
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+.byc-refresh-meta {
+	font-size: 11px;
+	color: var(--byc-muted);
+	max-width: 9em;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.byc-spinner-icon {
+	animation: byc-spin 0.8s linear infinite;
+}
+
+@keyframes byc-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
 .byc-icon-btn:hover,
 .byc-btn:hover,
 .byc-chip:hover {

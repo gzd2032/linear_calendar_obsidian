@@ -72,6 +72,12 @@ export function refreshIcon(): SVGSVGElement {
 	return svgIcon(["M21 12a9 9 0 1 1-2.3-6", "M21 3v6h-6"]);
 }
 
+export function spinnerIcon(): SVGSVGElement {
+	const svg = svgIcon(["M12 3a9 9 0 1 1-6.36 2.64"]);
+	svg.classList.add("byc-spinner-icon");
+	return svg;
+}
+
 export function expandIcon(): SVGSVGElement {
 	return svgIcon([
 		"M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5",
