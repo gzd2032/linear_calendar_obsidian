@@ -326,30 +326,28 @@ export class EventDetailPopover {
 				description,
 			},
 			calendars,
-			(draft: EventDraft) => {
-				void (async () => {
-					if (!event.path) return;
-					try {
-						await updateEventNote(
-							this.app,
-							event.path,
-							{
-								title: draft.title.trim() || "Untitled",
-								start: draft.start,
-								end: endOnOrAfterStart(draft.start, draft.end),
-								color: draft.color,
-								calendar: sanitizeCalendarName(draft.calendar || event.calendar),
-								description: draft.description,
-							},
-							this.getEventsFolder(),
-						);
-						new Notice("Event updated");
-						this.onChanged();
-					} catch (error) {
-						console.error(error);
-						new Notice("Could not update event");
-					}
-				})();
+			async (draft: EventDraft) => {
+				if (!event.path) throw new Error("Event note not found.");
+				try {
+					await updateEventNote(
+						this.app,
+						event.path,
+						{
+							title: draft.title.trim(),
+							start: draft.start,
+							end: endOnOrAfterStart(draft.start, draft.end),
+							color: draft.color,
+							calendar: sanitizeCalendarName(draft.calendar || event.calendar),
+							description: draft.description,
+						},
+						this.getEventsFolder(),
+					);
+					new Notice("Event updated");
+					this.onChanged();
+				} catch (error) {
+					console.error(error);
+					throw new Error("Could not update event.");
+				}
 			},
 			"Edit event",
 		).open();

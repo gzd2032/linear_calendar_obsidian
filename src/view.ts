@@ -1,5 +1,5 @@
 import { ItemView, Notice, type WorkspaceLeaf } from "obsidian";
-import { colorForName, endOnOrAfterStart, parseISODate } from "./grid";
+import { colorForName, endOnOrAfterStart } from "./grid";
 import { GOOGLE_HOLIDAYS_NAME } from "./ics";
 import type LinearYearCalendarPlugin from "./main";
 import { EventCreateModal } from "./modal";
@@ -233,17 +233,13 @@ export class YearCalendarView extends ItemView {
 				description: "",
 			},
 			calendars,
-			(draft) => {
-				void (async () => {
-					if (!parseISODate(draft.start) || !parseISODate(draft.end)) {
-						new Notice("Use YYYY-MM-DD dates.");
-						return;
-					}
-					const calendar = sanitizeCalendarName(
-						draft.calendar || this.plugin.settings.defaultCalendar,
-					);
+			async (draft) => {
+				const calendar = sanitizeCalendarName(
+					draft.calendar || this.plugin.settings.defaultCalendar,
+				);
+				try {
 					const file = await createEventNote(this.app, this.plugin.settings.eventsFolder, {
-						title: draft.title,
+						title: draft.title.trim(),
 						start: draft.start,
 						end: endOnOrAfterStart(draft.start, draft.end),
 						color: draft.color,
@@ -252,7 +248,10 @@ export class YearCalendarView extends ItemView {
 					});
 					new Notice(`Created ${file.basename}`);
 					this.render();
-				})();
+				} catch (error) {
+					console.error(error);
+					throw new Error("Could not create event.");
+				}
 			},
 		).open();
 	}
