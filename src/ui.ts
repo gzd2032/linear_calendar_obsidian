@@ -504,7 +504,10 @@ function addModeOption(
 		el("button", {
 			cls: "byc-mode-option",
 			type: "button",
-			attr: { role: "menuitem" },
+			attr: {
+				role: "menuitem",
+				"aria-label": viewBlurb(mode),
+			},
 		}),
 	);
 	if (mode === active) {
@@ -514,7 +517,6 @@ function addModeOption(
 	const head = mount(option, div("byc-mode-option-head"));
 	mount(head, el("span", { cls: "byc-mode-check", text: mode === active ? "✓" : "" }));
 	mount(head, el("span", { cls: "byc-mode-option-title", text: title }));
-	mount(option, el("span", { cls: "byc-mode-option-desc", text: viewBlurb(mode) }));
 	option.addEventListener("click", () => handlers.onModeChange(mode));
 }
 
@@ -866,12 +868,15 @@ function scheduleEventHoverTip(text: string, clientX: number, clientY: number): 
 function showEventHoverTip(text: string, clientX: number, clientY: number): void {
 	if (!eventHoverTip) {
 		eventHoverTip = el("div", {
-			cls: "byc-event-hover-tip",
+			cls: "byc-event-hover-tip is-end-right",
 			attr: { role: "tooltip" },
 		});
+		mount(eventHoverTip, el("div", { cls: "byc-event-hover-tip-arrow" }));
+		mount(eventHoverTip, el("div", { cls: "byc-event-hover-tip-text" }));
 		document.body.appendChild(eventHoverTip);
 	}
-	eventHoverTip.textContent = text;
+	const textEl = eventHoverTip.querySelector(".byc-event-hover-tip-text");
+	if (textEl) textEl.textContent = text;
 	eventHoverTip.hidden = false;
 	placeEventHoverTip(clientX, clientY);
 }
@@ -882,16 +887,24 @@ function placeEventHoverTip(clientX: number, clientY: number): void {
 		eventHoverTipPending.x = clientX;
 		eventHoverTipPending.y = clientY;
 	}
-	const pad = 14;
+	const pad = 22;
 	const w = eventHoverTip.offsetWidth || 180;
 	const h = eventHoverTip.offsetHeight || 40;
 	let left = clientX + pad;
+	let side: "right" | "left" = "right";
+	if (left + w > window.innerWidth - 8) {
+		left = clientX - w - pad;
+		side = "left";
+	}
 	let top = clientY - h / 2;
-	if (left + w > window.innerWidth - 8) left = clientX - w - pad;
 	if (top + h > window.innerHeight - 8) top = window.innerHeight - h - 8;
 	if (top < 8) top = 8;
+	const arrowY = Math.min(h - 10, Math.max(10, clientY - top));
+	eventHoverTip.classList.toggle("is-end-right", side === "right");
+	eventHoverTip.classList.toggle("is-end-left", side === "left");
 	eventHoverTip.style.left = `${left}px`;
 	eventHoverTip.style.top = `${Math.max(8, top)}px`;
+	setCssProps(eventHoverTip, { "--byc-tip-arrow-y": `${arrowY}px` });
 }
 
 function hideEventHoverTip(): void {

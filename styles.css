@@ -215,9 +215,12 @@
 }
 
 .byc-menu-compact {
-	min-width: 220px;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	min-width: 0;
 	width: max-content;
-	padding: 4px;
+	padding: 6px;
 	left: 50%;
 	right: auto;
 	transform: translateX(-50%);
@@ -230,10 +233,10 @@
 button.byc-mode-option {
 	display: flex;
 	flex-direction: column;
-	align-items: flex-start;
-	gap: 2px;
+	align-items: stretch;
+	gap: 0;
 	width: 100%;
-	white-space: normal;
+	white-space: nowrap;
 	text-align: left;
 	border: 0;
 	outline: none;
@@ -241,7 +244,7 @@ button.byc-mode-option {
 	background: transparent;
 	background-color: transparent;
 	border-radius: 8px;
-	padding: 8px 10px;
+	padding: 7px 10px;
 	cursor: pointer;
 	font: inherit;
 	font-size: 13px;
@@ -458,6 +461,7 @@ button.byc-mode-option.is-active {
 	background: color-mix(in srgb, var(--byc-accent) 16%, var(--byc-surface));
 	background-color: color-mix(in srgb, var(--byc-accent) 16%, var(--byc-surface));
 	color: var(--byc-text);
+	border-radius: 8px;
 }
 
 .byc-mode-option-head {
@@ -472,14 +476,6 @@ button.byc-mode-option.is-active {
 	width: 1em;
 	text-align: center;
 	color: var(--byc-today-text);
-}
-
-.byc-mode-option-desc {
-	padding-left: calc(1em + 8px);
-	font-size: 11px;
-	font-weight: 400;
-	color: var(--byc-muted);
-	line-height: 1.3;
 }
 
 .byc-empty {
@@ -562,6 +558,8 @@ button.byc-mode-option.is-active {
 
 /* Cursor-following event tip. Opaque message colors so text stays readable. */
 .byc-event-hover-tip {
+	--byc-tip-arrow: 6px;
+	--byc-tip-arrow-y: 50%;
 	position: fixed;
 	z-index: var(--layer-tooltip, 10000);
 	pointer-events: none;
@@ -577,6 +575,28 @@ button.byc-mode-option.is-active {
 	opacity: 1;
 	box-shadow: var(--shadow-s, 0 2px 8px rgba(0, 0, 0, 0.18));
 	max-width: min(280px, calc(100vw - 16px));
+}
+
+.byc-event-hover-tip-arrow {
+	position: absolute;
+	width: 0;
+	height: 0;
+	top: var(--byc-tip-arrow-y);
+	transform: translateY(-50%);
+	border: var(--byc-tip-arrow) solid transparent;
+}
+
+.byc-event-hover-tip.is-end-right .byc-event-hover-tip-arrow {
+	left: calc(var(--byc-tip-arrow) * -1);
+	border-right-color: var(--background-modifier-message, #2a2a2a);
+	border-left-width: 0;
+}
+
+.byc-event-hover-tip.is-end-left .byc-event-hover-tip-arrow {
+	right: calc(var(--byc-tip-arrow) * -1);
+	left: auto;
+	border-left-color: var(--background-modifier-message, #2a2a2a);
+	border-right-width: 0;
 }
 
 .byc-table {
