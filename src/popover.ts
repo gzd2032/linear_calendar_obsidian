@@ -1,7 +1,7 @@
 import { Notice, TFile, type App } from "obsidian";
 import { googleCalendarDayUrl, isGoogleEvent, sanitizeCalendarName } from "./calendar-paths";
 import { ConfirmModal } from "./confirm-modal";
-import { div, el, mount } from "./dom";
+import { div, el, mount, setCssProps } from "./dom";
 import { endOnOrAfterStart, eventDayCount, formatShortDate } from "./grid";
 import type { CalendarEvent } from "./types";
 import { EventCreateModal, type EventDraft } from "./modal";
@@ -20,6 +20,7 @@ export class EventDetailPopover {
 	private onKeyDown: ((ev: KeyboardEvent) => void) | null = null;
 	private onScroll: ((ev: Event) => void) | null = null;
 	private pointer: { x: number; y: number } | null = null;
+	private restoreFocus: HTMLElement | null = null;
 
 	constructor(
 		private app: App,
@@ -54,20 +55,43 @@ export class EventDetailPopover {
 		anchor: HTMLElement,
 		pointer?: { x: number; y: number },
 	): void {
+		void this.openAsync(event, anchor, pointer);
+	}
+
+	private async openAsync(
+		event: CalendarEvent,
+		anchor: HTMLElement,
+		pointer?: { x: number; y: number },
+	): Promise<void> {
 		if (this.isOpenFor(event.id)) {
 			this.close();
 			return;
 		}
 
-		this.close();
+		this.close(false);
 		this.openEventId = event.id;
 		this.activeEvent = event;
 		this.anchor = anchor;
+		this.restoreFocus = anchor;
 		this.pointer = pointer ?? null;
 		const token = ++this.openToken;
 		const google = isGoogleEvent(event, this.getEventsFolder());
+		const description = event.path ? await readNoteDescription(this.app, event.path) : "";
+		if (token !== this.openToken) return;
 
-		const pop = mount(document.body, div("byc-popover"));
+		const titleId = `byc-popover-title-${token}`;
+		const pop = mount(
+			document.body,
+			el("div", {
+				cls: "byc-popover",
+				attr: {
+					role: "dialog",
+					"aria-modal": "true",
+					"aria-labelledby": titleId,
+					tabindex: "-1",
+				},
+			}),
+		);
 		this.root = pop;
 
 		const header = mount(pop, div("byc-popover-header"));
@@ -81,6 +105,7 @@ export class EventDetailPopover {
 				type: "button",
 				text: event.title,
 				attr: {
+					id: titleId,
 					"aria-label": event.path ? `${event.title} — Open note` : event.title,
 				},
 			}),
@@ -106,36 +131,40 @@ export class EventDetailPopover {
 
 		const body = mount(pop, div("byc-popover-body"));
 		const dates = mount(body, div("byc-popover-dates"));
-		const startCol = mount(dates, div("byc-popover-date"));
-		mount(startCol, div("byc-popover-date-label", "Start"));
-		mount(startCol, div("byc-popover-date-value", formatShortDate(event.start)));
-		const endCol = mount(dates, div("byc-popover-date"));
-		mount(endCol, div("byc-popover-date-label", "End"));
-		mount(endCol, div("byc-popover-date-value", formatShortDate(event.end)));
+		const yearsDiffer = event.start.slice(0, 4) !== event.end.slice(0, 4);
+		const dateText = (iso: string) => formatShortDate(iso, yearsDiffer);
+		if (event.start === event.end) {
+			addDateCol(dates, "Date", dateText(event.start));
+		} else {
+			addDateCol(dates, "Start", dateText(event.start));
+			addDateCol(dates, "End", dateText(event.end));
+		}
 		const days = eventDayCount(event.start, event.end);
-		const daysCol = mount(dates, div("byc-popover-date"));
-		mount(daysCol, div("byc-popover-date-label", "Duration"));
-		mount(daysCol, div("byc-popover-date-value", days === 1 ? "1 day" : `${days} days`));
+		addDateCol(dates, "Duration", days === 1 ? "1 day" : `${days} days`);
 
 		const calendarName = event.calendar.trim() || "Personal";
-		mount(
-			body,
-			div("byc-popover-source", google ? `${calendarName} · read-only` : calendarName),
-		);
+		const source = mount(body, div("byc-popover-source"));
+		const badge = mount(source, el("span", { cls: "byc-popover-badge", text: calendarName }));
+		setCssProps(badge, { "--byc-badge": event.color });
+		if (google) {
+			mount(source, el("span", { cls: "byc-popover-readonly", text: "read-only" }));
+		}
 
-		const descEl = mount(body, div("byc-popover-desc"));
-		descEl.hidden = true;
+		const preview = shortenDescription(description);
+		if (preview) {
+			mount(body, el("div", { cls: "byc-popover-desc", text: preview }));
+		}
 
 		const footer = mount(pop, div("byc-popover-footer"));
 
 		if (google) {
 			const openGoogle = labeledIconButton(
 				footer,
-				"Google",
-				"byc-popover-edit",
+				"Open in Google Calendar",
+				"byc-popover-external",
 				externalIcon(),
 			);
-			openGoogle.setAttribute("aria-label", "Open day in Google Calendar");
+			openGoogle.setAttribute("aria-label", "Open in Google Calendar");
 			openGoogle.addEventListener("click", () => {
 				this.openGoogleDay(event);
 			});
@@ -153,7 +182,10 @@ export class EventDetailPopover {
 		}
 
 		this.position(pop, anchor, this.pointer);
-		window.requestAnimationFrame(() => pop.classList.add("is-open"));
+		window.requestAnimationFrame(() => {
+			pop.classList.add("is-open");
+			pop.focus();
+		});
 
 		this.onDocPointer = (ev: PointerEvent) => {
 			if (!this.root) return;
@@ -164,6 +196,12 @@ export class EventDetailPopover {
 		};
 		this.onKeyDown = (ev: KeyboardEvent) => {
 			if (!this.root || !this.activeEvent) return;
+
+			if (ev.key === "Tab") {
+				trapFocus(this.root, ev);
+				return;
+			}
+
 			const tag = (ev.target as HTMLElement | null)?.tagName;
 			if (tag === "INPUT" || tag === "TEXTAREA") return;
 
@@ -191,20 +229,10 @@ export class EventDetailPopover {
 			if (this.onKeyDown) document.addEventListener("keydown", this.onKeyDown);
 			if (this.onScroll) document.addEventListener("scroll", this.onScroll, true);
 		}, 0);
-
-		if (event.path) {
-			void readNoteDescription(this.app, event.path).then((description) => {
-				if (token !== this.openToken || !this.root || !this.anchor) return;
-				const preview = shortenDescription(description);
-				if (!preview) return;
-				descEl.textContent = preview;
-				descEl.hidden = false;
-				this.position(pop, this.anchor, this.pointer);
-			});
-		}
 	}
 
-	close(): void {
+	close(restoreFocus = true): void {
+		this.openToken += 1;
 		if (this.onDocPointer) {
 			document.removeEventListener("pointerdown", this.onDocPointer);
 			this.onDocPointer = null;
@@ -223,6 +251,9 @@ export class EventDetailPopover {
 		this.activeEvent = null;
 		this.anchor = null;
 		this.pointer = null;
+		const target = this.restoreFocus;
+		this.restoreFocus = null;
+		if (restoreFocus) target?.focus();
 	}
 
 	private openNote(event: CalendarEvent): void {
@@ -357,4 +388,43 @@ function shortenDescription(text: string): string {
 	if (!compact) return "";
 	if (compact.length <= DESC_PREVIEW_LEN) return compact;
 	return `${compact.slice(0, DESC_PREVIEW_LEN - 1).trimEnd()}…`;
+}
+
+function addDateCol(parent: HTMLElement, label: string, value: string): void {
+	const col = mount(parent, div("byc-popover-date"));
+	mount(col, div("byc-popover-date-label", label));
+	mount(col, div("byc-popover-date-value", value));
+}
+
+function dialogFocusables(root: HTMLElement): HTMLElement[] {
+	const nodes: HTMLElement[] = [];
+	const found = root.querySelectorAll("button, [href], input, select, textarea");
+	for (let i = 0; i < found.length; i++) {
+		const node = found[i];
+		if (!(node instanceof HTMLElement)) continue;
+		if (node.hasAttribute("disabled") || node.tabIndex === -1) continue;
+		nodes.push(node);
+	}
+	return nodes;
+}
+
+function trapFocus(root: HTMLElement, ev: KeyboardEvent): void {
+	const nodes = dialogFocusables(root);
+	if (nodes.length === 0) {
+		ev.preventDefault();
+		root.focus();
+		return;
+	}
+	const first = nodes[0];
+	const last = nodes[nodes.length - 1];
+	const active = document.activeElement;
+	if (ev.shiftKey && (active === first || active === root || !root.contains(active))) {
+		ev.preventDefault();
+		last?.focus();
+		return;
+	}
+	if (!ev.shiftKey && (active === last || !root.contains(active))) {
+		ev.preventDefault();
+		first?.focus();
+	}
 }
