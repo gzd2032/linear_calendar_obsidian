@@ -5,7 +5,6 @@ import {
 	buildYearGrid,
 	daysInMonth,
 	formatEventRange,
-	formatEventTooltip,
 	formatISODate,
 	maxLanes,
 	monthLabel,
@@ -728,7 +727,6 @@ function renderMonthList(
 						cls: "byc-list-event",
 						type: "button",
 						text: label,
-						title: formatEventTooltip(event),
 						attr: {
 							"aria-label": `${event.title}, ${formatEventRange(event.start, event.end)}`,
 							"data-event-id": event.id,
@@ -759,7 +757,6 @@ function mountEventBar(
 			cls: column ? "byc-event byc-column-event" : "byc-event",
 			type: "button",
 			text: segment.event.title,
-			title: formatEventTooltip(segment.event),
 			attr: {
 				"aria-label": `${segment.event.title}, ${range}`,
 			},
