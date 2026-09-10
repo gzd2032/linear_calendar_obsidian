@@ -384,8 +384,13 @@ function formatToolbarRefreshLabel(iso: string): string | undefined {
 	if (!iso) return undefined;
 	const date = new Date(iso);
 	if (Number.isNaN(date.getTime())) return undefined;
-	const time = date.toLocaleString(undefined, { hour: "numeric", minute: "2-digit" });
-	return `Updated ${time}`;
+	const when = date.toLocaleString(undefined, {
+		month: "short",
+		day: "numeric",
+		hour: "numeric",
+		minute: "2-digit",
+	});
+	return `Updated ${when}`;
 }
 
 function formatRefreshStatusTitle(

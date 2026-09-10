@@ -108,7 +108,7 @@
 .byc-refresh-meta {
 	font-size: 11px;
 	color: var(--byc-muted);
-	max-width: 9em;
+	max-width: 14em;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -401,7 +401,7 @@ button.byc-mode-option:focus-visible {
 	min-width: 0;
 	display: flex;
 	flex-direction: column;
-	gap: 4px;
+	gap: 6px;
 }
 
 .byc-list-event {
@@ -500,7 +500,7 @@ button.byc-mode-option:focus-visible {
 .byc-root.is-wide {
 	--byc-wide-day: 80px;
 	--byc-wide-dayhead: 20px;
-	--byc-wide-lane: 28px;
+	--byc-wide-lane: 30px;
 	--byc-wide-pad: 4px;
 	--byc-event-inset-x: 6px;
 }
@@ -807,7 +807,7 @@ button.byc-mode-option:focus-visible {
 
 .byc-event {
 	z-index: 2;
-	margin: 1px var(--byc-event-inset-x);
+	margin: 2px var(--byc-event-inset-x);
 	border-radius: 4px;
 	padding: 1px 5px;
 	font-size: 10px;
@@ -891,7 +891,7 @@ button.byc-event {
 
 .byc-column-event {
 	z-index: 2;
-	margin: 1px 3px 1px 2px;
+	margin: 2px 3px 2px 2px;
 	min-width: 0;
 	writing-mode: horizontal-tb;
 	align-self: stretch;

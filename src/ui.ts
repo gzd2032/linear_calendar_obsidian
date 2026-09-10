@@ -565,7 +565,7 @@ function renderRowBoard(
 	table.style.setProperty("--byc-cols", String(grid.colCount));
 	const wide = board.closest(".byc-root")?.classList.contains("is-wide") ?? false;
 	const headPx = wide ? 20 : 18;
-	const lanePx = wide ? 28 : grid.mode === "linear" ? 24 : 22;
+	const lanePx = wide ? 30 : grid.mode === "linear" ? 26 : 24;
 	const padPx = 4;
 	const showToday = today.year === today.todayYear;
 
