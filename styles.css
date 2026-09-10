@@ -492,21 +492,34 @@ button.byc-mode-option:focus-visible {
 	white-space: nowrap;
 }
 
-/* Cursor-following event tip (not Obsidian’s .tooltip — that anchors to element center). */
+.byc-sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+/* Cursor-following event tip. Opaque message colors so text stays readable. */
 .byc-event-hover-tip {
 	position: fixed;
 	z-index: var(--layer-tooltip, 10000);
 	pointer-events: none;
 	padding: 4px 8px;
 	border-radius: var(--radius-s, 4px);
-	background-color: var(--background-modifier-message, var(--background-secondary));
-	color: var(--text-normal);
+	background-color: var(--background-modifier-message, #2a2a2a);
+	color: var(--text-on-accent, #fff);
 	font-size: var(--font-ui-smaller, 12px);
-	font-weight: var(--font-normal, 400);
+	font-weight: var(--font-medium, 500);
 	line-height: 1.35;
 	white-space: pre-line;
 	text-align: left;
-	box-shadow: var(--shadow-s, 0 2px 8px rgba(0, 0, 0, 0.12));
+	opacity: 1;
+	box-shadow: var(--shadow-s, 0 2px 8px rgba(0, 0, 0, 0.18));
 	max-width: min(280px, calc(100vw - 16px));
 }
 
@@ -1052,6 +1065,11 @@ button.byc-event {
 	opacity: 0;
 	transform: translateY(4px) scale(0.98);
 	transition: opacity 150ms ease, transform 150ms ease;
+}
+
+/* Aria-label tips use Obsidian’s .tooltip (~layer 60), which sat under the popover. */
+.tooltip {
+	z-index: 1100;
 }
 
 .byc-popover.is-open {

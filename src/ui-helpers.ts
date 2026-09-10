@@ -34,7 +34,7 @@ export function iconButton(
 ): HTMLButtonElement {
 	const button = mount(
 		parent,
-		el("button", { cls: "byc-icon-btn", type: "button", attr: { "aria-label": label, title: label } }),
+		el("button", { cls: "byc-icon-btn", type: "button", attr: { "aria-label": label } }),
 	) as HTMLButtonElement;
 	button.appendChild(icon);
 	return button;
@@ -52,7 +52,6 @@ export function labeledIconButton(
 		el("button", {
 			cls,
 			type: "button",
-			attr: { "aria-label": label, title: label },
 		}),
 	) as HTMLButtonElement;
 	button.appendChild(icon);

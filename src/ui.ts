@@ -269,7 +269,7 @@ function renderToolbar(
 			cls: "byc-chip byc-today-btn",
 			type: "button",
 			text: "Today",
-			attr: { title: "Focus on today", "aria-label": "Focus on today" },
+			attr: { "aria-label": "Focus on today" },
 		}),
 	).addEventListener("click", () => handlers.onFocusToday());
 
@@ -414,7 +414,6 @@ function renderToolbar(
 						disabled: "true",
 						"aria-busy": "true",
 						"aria-label": "Importing…",
-						title: "Importing…",
 					},
 				}),
 			) as HTMLButtonElement;
@@ -729,7 +728,6 @@ function renderMonthList(
 						type: "button",
 						text: label,
 						attr: {
-							"aria-label": `${event.title}, ${formatEventRange(event.start, event.end)}`,
 							"data-event-id": event.id,
 						},
 					}),
@@ -762,11 +760,9 @@ function mountEventBar(
 			cls: column ? "byc-event byc-column-event" : "byc-event",
 			type: "button",
 			text: segment.event.title,
-			attr: {
-				"aria-label": `${segment.event.title}, ${range}`,
-			},
 		}),
 	) as HTMLButtonElement;
+	mount(bar, el("span", { cls: "byc-sr-only", text: `, ${range}` }));
 	suppressNativeTooltip(bar);
 	if (column) {
 		bar.style.gridRow = `${segment.startCol + 1} / ${segment.endCol + 2}`;
@@ -791,11 +787,22 @@ let eventHoverTip: HTMLElement | null = null;
 let eventHoverTipTimer: number | null = null;
 let eventHoverTipPending: { text: string; x: number; y: number } | null = null;
 
-/** Strip native `title` tooltips (they center on long multi-day bars). */
+/** Strip native/Obsidian tooltips (they center on long multi-day bars). */
 function suppressNativeTooltip(target: HTMLElement): void {
 	target.removeAttribute("title");
+	target.removeAttribute("aria-label");
+	target.removeAttribute("data-tooltip");
+	target.removeAttribute("aria-describedby");
 	// Empty title blocks Chromium’s truncated-text overflow tip on some builds.
 	target.title = "";
+	hideForeignTooltips();
+}
+
+function hideForeignTooltips(): void {
+	document.querySelectorAll(".tooltip").forEach((node) => {
+		if (node === eventHoverTip) return;
+		node.remove();
+	});
 }
 
 function wireEventHoverTip(target: HTMLElement, text: string): void {

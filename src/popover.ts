@@ -81,7 +81,7 @@ export class EventDetailPopover {
 				type: "button",
 				text: event.title,
 				attr: {
-					title: event.path ? `${event.title} — Open note` : event.title,
+					"aria-label": event.path ? `${event.title} — Open note` : event.title,
 				},
 			}),
 		) as HTMLButtonElement;
@@ -98,7 +98,7 @@ export class EventDetailPopover {
 			header,
 			el("button", {
 				cls: "byc-popover-close",
-				attr: { "aria-label": "Close", type: "button", title: "Close" },
+				attr: { "aria-label": "Close", type: "button" },
 				text: "×",
 			}),
 		);
@@ -136,21 +136,17 @@ export class EventDetailPopover {
 				externalIcon(),
 			);
 			openGoogle.setAttribute("aria-label", "Open day in Google Calendar");
-			openGoogle.title = "Open day in Google Calendar";
 			openGoogle.addEventListener("click", () => {
 				this.openGoogleDay(event);
 			});
 		} else {
 			const del = labeledIconButton(footer, "Delete", "byc-popover-delete", trashIcon());
-			del.setAttribute("aria-label", "Delete event");
-			del.title = "Delete event";
 			del.addEventListener("click", () => {
 				void this.deleteEvent(event);
 			});
 
 			const edit = labeledIconButton(footer, "Edit", "byc-popover-edit", pencilIcon());
-			edit.setAttribute("aria-label", "Edit event");
-			edit.title = "Edit event (E)";
+			edit.setAttribute("aria-label", "Edit event (E)");
 			edit.addEventListener("click", () => {
 				void this.openEdit(event);
 			});

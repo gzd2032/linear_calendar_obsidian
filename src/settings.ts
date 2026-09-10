@@ -174,6 +174,7 @@ export class LinearYearCalendarSettingTab extends PluginSettingTab {
 	private renderCompactSource(containerEl: HTMLElement, source: IcsSource, index: number): void {
 		const row = new Setting(containerEl);
 		row.settingEl.addClass("byc-ics-compact");
+		row.settingEl.dataset.icsId = source.id;
 
 		row.addColorPicker((picker) => {
 			picker.setValue(source.color).onChange(async (value) => {
@@ -221,21 +222,47 @@ export class LinearYearCalendarSettingTab extends PluginSettingTab {
 
 	private async addIcsSource(): Promise<void> {
 		const sources = this.plugin.settings.icsSources;
-		sources.push({
+		const source: IcsSource = {
 			id: crypto.randomUUID(),
 			name: "Google Calendar",
 			url: "",
 			color: PASTEL_COLORS[sources.length % PASTEL_COLORS.length] ?? "#A9C7E8",
 			enabled: true,
-		});
+		};
+		sources.push(source);
 		await this.plugin.saveSettings();
 		this.display();
+		this.scrollToIcsSource(source.id, true);
+	}
+
+	private scrollToIcsSource(id: string, focusUrl = false): void {
+		window.requestAnimationFrame(() => {
+			const row = this.containerEl.querySelector(`[data-ics-id="${CSS.escape(id)}"]`);
+			if (!(row instanceof HTMLElement)) return;
+			row.scrollIntoView({ block: "nearest", inline: "nearest" });
+			if (!focusUrl) return;
+			const url = row.querySelector(".byc-ics-url-input");
+			if (url instanceof HTMLInputElement) url.focus();
+		});
+	}
+
+	private scrollToIcsList(): void {
+		window.requestAnimationFrame(() => {
+			const list = this.containerEl.querySelector(".byc-ics-list");
+			if (list instanceof HTMLElement) {
+				list.scrollIntoView({ block: "nearest", inline: "nearest" });
+			}
+		});
 	}
 
 	private async removeIcsSource(index: number): Promise<void> {
-		this.plugin.settings.icsSources.splice(index, 1);
+		const sources = this.plugin.settings.icsSources;
+		const neighborId = sources[index + 1]?.id ?? sources[index - 1]?.id;
+		sources.splice(index, 1);
 		await this.plugin.saveSettings();
 		this.display();
+		if (neighborId) this.scrollToIcsSource(neighborId);
+		else this.scrollToIcsList();
 	}
 }
 

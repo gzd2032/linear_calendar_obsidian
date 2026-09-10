@@ -149,7 +149,6 @@ export class EventCreateModal extends Modal {
 					type: "button",
 					"aria-label": `Color ${index + 1}`,
 					"aria-pressed": active ? "true" : "false",
-					title: color,
 				},
 			});
 			dot.style.background = color;
