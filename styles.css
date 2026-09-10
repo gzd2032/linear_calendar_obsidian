@@ -1,5 +1,6 @@
 .byc-root,
-.byc-popover {
+.byc-popover,
+.byc-more-menu {
 	/* Calendar chrome maps fully to Obsidian theme tokens (light + dark). */
 	--byc-bg: var(--background-primary);
 	--byc-header: var(--background-secondary);
@@ -1073,10 +1074,12 @@ button.byc-more {
 	max-height: min(360px, 70vh);
 	overflow: auto;
 	padding: 8px;
-	border: 1px solid var(--byc-line);
+	border: 1px solid color-mix(in srgb, var(--byc-line) 65%, transparent);
 	border-radius: 12px;
-	background: var(--byc-elevated);
-	box-shadow: var(--byc-shadow-l);
+	background: color-mix(in srgb, var(--byc-elevated) 72%, transparent);
+	backdrop-filter: blur(10px);
+	-webkit-backdrop-filter: blur(10px);
+	box-shadow: var(--byc-shadow);
 	color: var(--byc-text);
 	font-family: var(--font-interface, var(--font-text), sans-serif);
 }
