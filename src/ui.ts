@@ -102,7 +102,7 @@ export function renderCalendar(
 	const todayYear = Number(state.todayIso.slice(0, 4));
 	const todayDate = parseISODate(state.todayIso);
 
-	const { displayMenu, filtersMenu, displayBtn, filterBtn } = renderToolbar(
+	const { menus, buttons } = renderToolbar(
 		root,
 		state,
 		handlers,
@@ -174,7 +174,7 @@ export function renderCalendar(
 		}
 	}
 
-	bindMenuDismiss(root, [displayMenu, filtersMenu], [displayBtn, filterBtn]);
+	bindMenuDismiss(root, menus, buttons);
 }
 
 const menuDismiss = new WeakMap<
@@ -245,12 +245,7 @@ function renderToolbar(
 	handlers: CalendarUIHandlers,
 	calendars: { local: string[]; google: string[]; all: string[] },
 	hiddenCount: number,
-): {
-	displayMenu: HTMLElement;
-	filtersMenu: HTMLElement;
-	displayBtn: HTMLButtonElement;
-	filterBtn: HTMLButtonElement;
-} {
+): { menus: HTMLElement[]; buttons: HTMLButtonElement[] } {
 	const toolbar = mount(root, div("byc-toolbar"));
 	const left = mount(toolbar, div("byc-toolbar-left"));
 	mount(left, el("h1", { cls: "byc-year", text: String(state.year) }));
@@ -272,14 +267,20 @@ function renderToolbar(
 	).addEventListener("click", () => handlers.onFocusToday());
 
 	const right = mount(toolbar, div("byc-toolbar-right"));
-	const wideBtn = iconButton(
-		right,
-		state.wideLayout ? "Fit calendar to window" : "Expand calendar width",
-		state.wideLayout ? compressIcon() : expandIcon(),
-	);
-	wideBtn.classList.add("byc-width-btn");
-	if (state.wideLayout) wideBtn.classList.add("is-active");
-	wideBtn.addEventListener("click", () => handlers.onToggleWideLayout());
+	const menus: HTMLElement[] = [];
+	const buttons: HTMLButtonElement[] = [];
+
+	// Width + Display only apply to grid layouts; narrow uses auto month-list.
+	if (!state.narrow) {
+		const wideBtn = iconButton(
+			right,
+			state.wideLayout ? "Fit calendar to window" : "Expand calendar width",
+			state.wideLayout ? compressIcon() : expandIcon(),
+		);
+		wideBtn.classList.add("byc-width-btn");
+		if (state.wideLayout) wideBtn.classList.add("is-active");
+		wideBtn.addEventListener("click", () => handlers.onToggleWideLayout());
+	}
 
 	const searchWrap = mount(right, div("byc-search"));
 	const searchInput = mount(
@@ -294,34 +295,40 @@ function renderToolbar(
 	searchInput.value = state.search;
 	searchInput.addEventListener("input", () => handlers.onSearchChange(searchInput.value));
 
-	const displayWrap = mount(right, div("byc-menu-wrap"));
-	const displayBtn = mount(
-		displayWrap,
-		el("button", {
-			cls: "byc-btn byc-view-btn",
-			type: "button",
-			text: viewLabel(state.mode),
-			attr: {
-				"aria-haspopup": "menu",
-				"aria-expanded": "false",
-				"aria-controls": "byc-display-menu",
-			},
-		}),
-	) as HTMLButtonElement;
-	const displayMenu = mount(
-		displayWrap,
-		el("div", {
-			cls: "byc-menu byc-menu-compact is-hidden",
-			attr: { id: "byc-display-menu", role: "menu" },
-		}),
-	);
-	for (const [title, mode] of [
-		["Stacked", "stacked"],
-		["Linear", "linear"],
-		["Column", "column"],
-		["Col-Stack", "col-stack"],
-	] as const) {
-		addModeOption(displayMenu, title, mode, state.mode, handlers);
+	let displayMenu: HTMLElement | null = null;
+	let displayBtn: HTMLButtonElement | null = null;
+	if (!state.narrow) {
+		const displayWrap = mount(right, div("byc-menu-wrap"));
+		displayBtn = mount(
+			displayWrap,
+			el("button", {
+				cls: "byc-btn byc-view-btn",
+				type: "button",
+				text: viewLabel(state.mode),
+				attr: {
+					"aria-haspopup": "menu",
+					"aria-expanded": "false",
+					"aria-controls": "byc-display-menu",
+				},
+			}),
+		) as HTMLButtonElement;
+		displayMenu = mount(
+			displayWrap,
+			el("div", {
+				cls: "byc-menu byc-menu-compact is-hidden",
+				attr: { id: "byc-display-menu", role: "menu" },
+			}),
+		);
+		for (const [title, mode] of [
+			["Stacked", "stacked"],
+			["Linear", "linear"],
+			["Column", "column"],
+			["Col-Stack", "col-stack"],
+		] as const) {
+			addModeOption(displayMenu, title, mode, state.mode, handlers);
+		}
+		menus.push(displayMenu);
+		buttons.push(displayBtn);
 	}
 
 	const filterWrap = mount(right, div("byc-menu-wrap"));
@@ -351,15 +358,28 @@ function renderToolbar(
 		}),
 	);
 	renderFiltersMenu(filtersMenu, calendars, state, handlers);
+	menus.push(filtersMenu);
+	buttons.push(filterBtn);
 
-	displayBtn.addEventListener("click", (event) => {
-		event.stopPropagation();
-		toggleMenu(displayMenu, filtersMenu, displayBtn, filterBtn);
-	});
-	filterBtn.addEventListener("click", (event) => {
-		event.stopPropagation();
-		toggleMenu(filtersMenu, displayMenu, filterBtn, displayBtn);
-	});
+	if (displayBtn && displayMenu) {
+		displayBtn.addEventListener("click", (event) => {
+			event.stopPropagation();
+			toggleMenu(displayMenu, filtersMenu, displayBtn, filterBtn);
+		});
+		filterBtn.addEventListener("click", (event) => {
+			event.stopPropagation();
+			toggleMenu(filtersMenu, displayMenu, filterBtn, displayBtn);
+		});
+	} else {
+		filterBtn.addEventListener("click", (event) => {
+			event.stopPropagation();
+			filtersMenu.classList.toggle("is-hidden");
+			filterBtn.setAttribute(
+				"aria-expanded",
+				filtersMenu.classList.contains("is-hidden") ? "false" : "true",
+			);
+		});
+	}
 
 	if (handlers.onRefresh) {
 		iconButton(right, "Refresh ICS calendars", refreshIcon()).addEventListener("click", () =>
@@ -367,7 +387,7 @@ function renderToolbar(
 		);
 	}
 
-	return { displayMenu, filtersMenu, displayBtn, filterBtn };
+	return { menus, buttons };
 }
 
 function renderFiltersMenu(
