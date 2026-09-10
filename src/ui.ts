@@ -151,7 +151,7 @@ export function renderCalendar(
 			onShowAll: handlers.onShowAllCalendars,
 		});
 	} else if (yearEvents.length === 0) {
-		emptyState(board, {
+		emptyState(host, {
 			kind: "empty-year",
 		});
 	}
