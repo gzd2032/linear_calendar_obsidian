@@ -1005,6 +1005,93 @@ button.byc-event {
 	box-shadow: var(--byc-shadow);
 }
 
+.byc-more {
+	z-index: 2;
+	margin: 1px var(--byc-event-inset-x, 6px);
+	border: 0;
+	padding: 0 4px;
+	border-radius: 4px;
+	background: transparent;
+	color: var(--byc-muted);
+	font: inherit;
+	font-size: 10px;
+	font-weight: 700;
+	line-height: 1.2;
+	text-align: left;
+	cursor: pointer;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	align-self: center;
+}
+
+.byc-more:hover,
+.byc-list-events .byc-more:hover {
+	color: var(--byc-text);
+	background: var(--byc-hover);
+}
+
+.byc-more:focus-visible {
+	outline: 2px solid var(--byc-focus);
+	outline-offset: 1px;
+}
+
+.byc-list-events .byc-more {
+	margin: 0;
+	min-height: 22px;
+	padding: 2px 8px;
+	font-size: 12px;
+}
+
+.byc-more-menu {
+	position: fixed;
+	z-index: 1000;
+	min-width: 180px;
+	max-width: 280px;
+	max-height: min(360px, 70vh);
+	overflow: auto;
+	padding: 8px;
+	border: 1px solid var(--byc-line);
+	border-radius: 12px;
+	background: var(--byc-elevated);
+	box-shadow: var(--byc-shadow-l);
+	color: var(--byc-text);
+	font-family: var(--font-interface, var(--font-text), sans-serif);
+}
+
+.byc-more-menu-title {
+	font-size: 12px;
+	font-weight: 700;
+	color: var(--byc-muted);
+	padding: 2px 6px 8px;
+}
+
+.byc-more-menu-list {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.byc-more-menu-event {
+	appearance: none;
+	border: 0;
+	border-radius: 6px;
+	padding: 6px 8px;
+	font: inherit;
+	font-size: 12px;
+	font-weight: 600;
+	text-align: left;
+	cursor: pointer;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.byc-more-menu-event:focus-visible {
+	outline: 2px solid var(--byc-focus);
+	outline-offset: 1px;
+}
+
 /* Column view: months side by side, days top→bottom, events in-column */
 .byc-column-wrap {
 	min-width: 720px;

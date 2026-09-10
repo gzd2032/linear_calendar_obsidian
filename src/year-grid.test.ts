@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildYearGrid } from "./year-grid";
-import { maxLanes, packLanes, segmentsForMonth } from "./segments";
+import { eventsAtCol, hasOverflowLanes, maxLanes, overflowCountAtCol, packLanes, segmentsForMonth, visibleLaneCount } from "./segments";
 import type { CalendarEvent } from "./types";
 
 const sampleEvent = (partial: Partial<CalendarEvent> & Pick<CalendarEvent, "start" | "end">): CalendarEvent => ({
@@ -57,6 +57,22 @@ describe("segments", () => {
 		]);
 		expect(new Set(packed.map((s) => s.lane)).size).toBe(2);
 		expect(maxLanes([])).toBe(1);
+	});
+
+	it("caps visible lanes and counts overflow per day column", () => {
+		const packed = packLanes(
+			[0, 1, 2, 3, 4, 5].map((i) => ({
+				event: sampleEvent({ id: `e${i}`, start: "2026-01-02", end: "2026-01-02" }),
+				startCol: 1,
+				endCol: 1,
+			})),
+		);
+		expect(maxLanes(packed)).toBe(6);
+		expect(visibleLaneCount(packed)).toBe(4);
+		expect(hasOverflowLanes(packed)).toBe(true);
+		expect(overflowCountAtCol(packed, 1)).toBe(2);
+		expect(overflowCountAtCol(packed, 0)).toBe(0);
+		expect(eventsAtCol(packed, 1)).toHaveLength(6);
 	});
 
 	it("clips events to month bounds for segments", () => {
