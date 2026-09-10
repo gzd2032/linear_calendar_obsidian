@@ -29,6 +29,7 @@ import {
 	refreshIcon,
 	spinnerIcon,
 	toggleMenu,
+	viewBlurb,
 	viewLabel,
 } from "./ui-helpers";
 
@@ -69,6 +70,7 @@ export interface CalendarUIHandlers {
 	onEventClick: (event: CalendarEvent, anchor: HTMLElement, pointer?: { x: number; y: number }) => void;
 	onRangeSelect: (start: string, end: string) => void;
 	onRefresh?: () => void;
+	onOpenSettings?: () => void;
 }
 
 const boardScrollMemory = new WeakMap<
@@ -118,11 +120,25 @@ export function renderCalendar(
 	);
 
 	const board = mount(root, div("byc-board"));
-	if (visibleEvents.length === 0 && state.events.length > 0 && (hiddenCount > 0 || Boolean(query))) {
+	const queryActive = Boolean(query);
+	const yearEvents = visibleEvents.filter((event) => eventOverlapsYear(event, state.year));
+	if (state.events.length === 0) {
 		emptyState(board, {
-			query: Boolean(query),
+			kind: "onboarding",
+			onOpenSettings: handlers.onOpenSettings,
+			onRefresh: handlers.onRefresh,
+		});
+	} else if (visibleEvents.length === 0 && (hiddenCount > 0 || queryActive)) {
+		board.classList.add("has-empty-overlay");
+		emptyState(board, {
+			kind: "filtered",
+			query: queryActive,
 			hiddenCount,
 			onShowAll: handlers.onShowAllCalendars,
+		});
+	} else if (yearEvents.length === 0) {
+		emptyState(board, {
+			kind: "empty-year",
 		});
 	}
 
@@ -244,6 +260,12 @@ function filterVisibleEvents(
 		if (query && !event.title.toLowerCase().includes(query)) return false;
 		return true;
 	});
+}
+
+function eventOverlapsYear(event: CalendarEvent, year: number): boolean {
+	const start = `${year}-01-01`;
+	const end = `${year}-12-31`;
+	return event.start <= end && event.end >= start;
 }
 
 function renderToolbar(
@@ -485,8 +507,14 @@ function addModeOption(
 			attr: { role: "menuitem" },
 		}),
 	);
-	if (mode === active) option.classList.add("is-active");
-	option.textContent = title;
+	if (mode === active) {
+		option.classList.add("is-active");
+		option.setAttribute("aria-current", "true");
+	}
+	const head = mount(option, div("byc-mode-option-head"));
+	mount(head, el("span", { cls: "byc-mode-check", text: mode === active ? "✓" : "" }));
+	mount(head, el("span", { cls: "byc-mode-option-title", text: title }));
+	mount(option, el("span", { cls: "byc-mode-option-desc", text: viewBlurb(mode) }));
 	option.addEventListener("click", () => handlers.onModeChange(mode));
 }
 
