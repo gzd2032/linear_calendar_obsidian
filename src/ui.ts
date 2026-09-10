@@ -132,7 +132,8 @@ export function renderCalendar(
 		hiddenCount,
 	);
 
-	const board = mount(root, div("byc-board"));
+	const host = mount(root, div("byc-board-host"));
+	const board = mount(host, div("byc-board"));
 	const queryActive = Boolean(query);
 	const yearEvents = visibleEvents.filter((event) => eventOverlapsYear(event, state.year));
 	if (state.events.length === 0) {
@@ -143,7 +144,7 @@ export function renderCalendar(
 		});
 	} else if (visibleEvents.length === 0 && (hiddenCount > 0 || queryActive)) {
 		board.classList.add("has-empty-overlay");
-		emptyState(board, {
+		emptyState(host, {
 			kind: "filtered",
 			query: queryActive,
 			hiddenCount,

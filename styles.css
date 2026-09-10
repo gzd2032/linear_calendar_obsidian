@@ -360,8 +360,18 @@ button.byc-mode-option:focus-visible {
 	flex-shrink: 0;
 }
 
+.byc-board-host {
+	flex: 1;
+	min-width: 0;
+	min-height: 0;
+	position: relative;
+	display: flex;
+	flex-direction: column;
+}
+
 .byc-board {
 	flex: 1;
+	min-height: 0;
 	overflow: auto;
 	padding: 0 8px 16px;
 	position: relative;
@@ -534,13 +544,17 @@ button.byc-mode-option.is-active {
 	margin-top: 4px;
 }
 
-.byc-board.has-empty-overlay {
-	position: relative;
+.byc-board-host > .byc-empty {
+	position: absolute;
+	top: 16px;
+	left: 16px;
+	margin: 0;
+	max-width: min(360px, calc(100% - 32px));
+	z-index: 6;
 }
 
-.byc-board.has-empty-overlay .byc-empty {
-	position: sticky;
-	top: 16px;
+.byc-board.has-empty-overlay {
+	position: relative;
 }
 
 .byc-board.has-empty-overlay .byc-table,
