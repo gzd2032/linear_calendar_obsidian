@@ -21,6 +21,16 @@ export interface IcsSource {
 	enabled: boolean;
 }
 
+/** One row in the Filters menu. `id` is `local:<name>` or `google:<source-id>`. */
+export interface FilterCalendar {
+	id: string;
+	name: string;
+	kind: "local" | "google";
+	color: string;
+	eventCount: number;
+	imported: boolean;
+}
+
 export interface IcsRefreshResult {
 	name: string;
 	ok: boolean;

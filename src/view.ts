@@ -113,10 +113,10 @@ export class YearCalendarView extends ItemView {
 				weekStartsOn: this.plugin.settings.weekStartsOn,
 				events,
 				eventsFolder: this.plugin.settings.eventsFolder,
-				icsCalendarNames: [
-					...this.plugin.settings.icsSources.map((source) => source.name).filter(Boolean),
-					...(this.plugin.settings.googleHolidaysEnabled ? [GOOGLE_HOLIDAYS_NAME] : []),
-				],
+				icsSources: this.plugin.settings.icsSources,
+				defaultCalendar: this.plugin.settings.defaultCalendar,
+				googleHolidaysEnabled: this.plugin.settings.googleHolidaysEnabled,
+				googleHolidaysColor: this.plugin.settings.googleHolidaysColor,
 				hiddenCalendars: new Set(this.plugin.settings.hiddenCalendars),
 				search: this.search,
 				todayIso: this.todayIso,
@@ -160,16 +160,23 @@ export class YearCalendarView extends ItemView {
 					this.plugin.settings.wideLayout = !this.plugin.settings.wideLayout;
 					void this.plugin.saveSettings().then(() => this.render());
 				},
-				onToggleCalendar: (name) => {
+				onToggleCalendar: (id) => {
 					const hidden = new Set(this.plugin.settings.hiddenCalendars);
-					if (hidden.has(name)) hidden.delete(name);
-					else hidden.add(name);
+					if (hidden.has(id)) hidden.delete(id);
+					else hidden.add(id);
 					this.plugin.settings.hiddenCalendars = [...hidden];
-					void this.plugin.saveSettings().then(() => this.render());
+					this.render();
+					void this.plugin.saveSettings();
 				},
 				onShowAllCalendars: () => {
 					this.plugin.settings.hiddenCalendars = [];
-					void this.plugin.saveSettings().then(() => this.render());
+					this.render();
+					void this.plugin.saveSettings();
+				},
+				onHideAllCalendars: (ids) => {
+					this.plugin.settings.hiddenCalendars = [...ids];
+					this.render();
+					void this.plugin.saveSettings();
 				},
 				onEventClick: (event, anchor, pointer) => {
 					this.popover?.open(event, anchor, pointer);

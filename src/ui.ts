@@ -15,8 +15,8 @@ import {
 	weekdayIndex,
 	weekdayLabel,
 } from "./grid";
-import { partitionCalendars } from "./calendar-paths";
-import type { CalendarEvent, ViewMode, YearGrid } from "./types";
+import { calendarFilterId, listFilterCalendars } from "./calendar-paths";
+import type { CalendarEvent, FilterCalendar, IcsSource, ViewMode, YearGrid } from "./types";
 import {
 	chevronLeft,
 	chevronRight,
@@ -42,7 +42,10 @@ export interface CalendarUIState {
 	weekStartsOn: number;
 	events: CalendarEvent[];
 	eventsFolder: string;
-	icsCalendarNames: string[];
+	icsSources: IcsSource[];
+	defaultCalendar: string;
+	googleHolidaysEnabled: boolean;
+	googleHolidaysColor: string;
 	hiddenCalendars: Set<string>;
 	search: string;
 	todayIso: string;
@@ -64,8 +67,9 @@ export interface CalendarUIHandlers {
 	onFocusToday: () => void;
 	onModeChange: (mode: ViewMode) => void;
 	onSearchChange: (query: string) => void;
-	onToggleCalendar: (name: string) => void;
+	onToggleCalendar: (id: string) => void;
 	onShowAllCalendars?: () => void;
+	onHideAllCalendars?: (ids: string[]) => void;
 	onToggleWideLayout: () => void;
 	onEventClick: (event: CalendarEvent, anchor: HTMLElement, pointer?: { x: number; y: number }) => void;
 	onRangeSelect: (start: string, end: string) => void;
@@ -100,14 +104,23 @@ export function renderCalendar(
 	root.classList.toggle("is-narrow", narrow);
 
 	const query = state.search.trim().toLowerCase();
-	const hiddenCount = state.hiddenCalendars.size;
-	const visibleEvents = filterVisibleEvents(state.events, state.hiddenCalendars, query);
-	const { local, google } = partitionCalendars(
+	const { local, google } = listFilterCalendars({
+		events: state.events,
+		eventsFolder: state.eventsFolder,
+		icsSources: state.icsSources,
+		defaultCalendar: state.defaultCalendar,
+		googleHolidaysEnabled: state.googleHolidaysEnabled,
+		googleHolidaysColor: state.googleHolidaysColor,
+	});
+	const calendars = { local, google, all: [...local, ...google] };
+	const hiddenCount = calendars.all.filter((cal) => state.hiddenCalendars.has(cal.id)).length;
+	const visibleEvents = filterVisibleEvents(
 		state.events,
+		state.hiddenCalendars,
+		query,
 		state.eventsFolder,
-		state.icsCalendarNames,
+		state.icsSources,
 	);
-	const calendars = [...local, ...google];
 	const todayYear = Number(state.todayIso.slice(0, 4));
 	const todayDate = parseISODate(state.todayIso);
 
@@ -115,11 +128,12 @@ export function renderCalendar(
 		root,
 		state,
 		handlers,
-		{ local, google, all: calendars },
+		calendars,
 		hiddenCount,
 	);
 
-	const board = mount(root, div("byc-board"));
+	const host = mount(root, div("byc-board-host"));
+	const board = mount(host, div("byc-board"));
 	const queryActive = Boolean(query);
 	const yearEvents = visibleEvents.filter((event) => eventOverlapsYear(event, state.year));
 	if (state.events.length === 0) {
@@ -130,14 +144,14 @@ export function renderCalendar(
 		});
 	} else if (visibleEvents.length === 0 && (hiddenCount > 0 || queryActive)) {
 		board.classList.add("has-empty-overlay");
-		emptyState(board, {
+		emptyState(host, {
 			kind: "filtered",
 			query: queryActive,
 			hiddenCount,
 			onShowAll: handlers.onShowAllCalendars,
 		});
 	} else if (yearEvents.length === 0) {
-		emptyState(board, {
+		emptyState(host, {
 			kind: "empty-year",
 		});
 	}
@@ -254,9 +268,11 @@ function filterVisibleEvents(
 	events: CalendarEvent[],
 	hidden: Set<string>,
 	query: string,
+	eventsFolder: string,
+	icsSources: IcsSource[],
 ): CalendarEvent[] {
 	return events.filter((event) => {
-		if (hidden.has(event.calendar)) return false;
+		if (hidden.has(calendarFilterId(event, eventsFolder, icsSources))) return false;
 		if (query && !event.title.toLowerCase().includes(query)) return false;
 		return true;
 	});
@@ -272,7 +288,7 @@ function renderToolbar(
 	root: HTMLElement,
 	state: CalendarUIState,
 	handlers: CalendarUIHandlers,
-	calendars: { local: string[]; google: string[]; all: string[] },
+	calendars: { local: FilterCalendar[]; google: FilterCalendar[]; all: FilterCalendar[] },
 	hiddenCount: number,
 ): { menus: HTMLElement[]; buttons: HTMLButtonElement[] } {
 	const toolbar = mount(root, div("byc-toolbar"));
@@ -374,7 +390,7 @@ function renderToolbar(
 	}
 
 	const filterWrap = mount(right, div("byc-menu-wrap"));
-	const visibleCount = calendars.all.filter((name) => !state.hiddenCalendars.has(name)).length;
+	const visibleCount = calendars.all.filter((cal) => !state.hiddenCalendars.has(cal.id)).length;
 	const filterLabel =
 		hiddenCount > 0
 			? `Filters · ${hiddenCount} hidden`
@@ -453,7 +469,7 @@ function renderToolbar(
 
 function renderFiltersMenu(
 	filtersMenu: HTMLElement,
-	calendars: { local: string[]; google: string[]; all: string[] },
+	calendars: { local: FilterCalendar[]; google: FilterCalendar[]; all: FilterCalendar[] },
 	state: CalendarUIState,
 	handlers: CalendarUIHandlers,
 ): void {
@@ -463,32 +479,58 @@ function renderFiltersMenu(
 	}
 	renderFilterSection(filtersMenu, "Local", calendars.local, state, handlers);
 	renderFilterSection(filtersMenu, "Google", calendars.google, state, handlers);
-	if (state.hiddenCalendars.size > 0 && handlers.onShowAllCalendars) {
-		mount(
-			filtersMenu,
-			el("button", { cls: "byc-menu-action", type: "button", text: "Show all calendars" }),
-		).addEventListener("click", () => handlers.onShowAllCalendars?.());
+	const actions = mount(filtersMenu, div("byc-filter-actions"));
+	if (handlers.onShowAllCalendars) {
+		const showAll = mount(
+			actions,
+			el("button", { cls: "byc-menu-action", type: "button", text: "Show all" }),
+		);
+		showAll.toggleAttribute("disabled", state.hiddenCalendars.size === 0);
+		showAll.addEventListener("click", () => handlers.onShowAllCalendars?.());
+	}
+	if (handlers.onHideAllCalendars) {
+		const hideAll = mount(
+			actions,
+			el("button", { cls: "byc-menu-action", type: "button", text: "Hide all" }),
+		);
+		const allHidden =
+			calendars.all.length > 0 && calendars.all.every((cal) => state.hiddenCalendars.has(cal.id));
+		hideAll.toggleAttribute("disabled", allHidden);
+		hideAll.addEventListener("click", () =>
+			handlers.onHideAllCalendars?.(calendars.all.map((cal) => cal.id)),
+		);
 	}
 }
 
 function renderFilterSection(
 	filtersMenu: HTMLElement,
 	label: string,
-	names: string[],
+	calendars: FilterCalendar[],
 	state: CalendarUIState,
 	handlers: CalendarUIHandlers,
 ): void {
-	if (names.length === 0) return;
+	if (calendars.length === 0) return;
 	mount(filtersMenu, div("byc-filter-section", label));
-	for (const name of names) {
-		const row = mount(filtersMenu, el("label", { cls: "byc-filter-row" }));
+	for (const calendar of calendars) {
+		const row = mount(
+			filtersMenu,
+			el("label", {
+				cls: `byc-filter-row${calendar.imported ? "" : " is-not-imported"}`,
+			}),
+		);
 		const checkbox = mount(row, el("input", { type: "checkbox" })) as HTMLInputElement;
-		checkbox.checked = !state.hiddenCalendars.has(name);
-		checkbox.addEventListener("change", () => handlers.onToggleCalendar(name));
-		mount(row, el("span", { text: name }));
+		checkbox.checked = !state.hiddenCalendars.has(calendar.id);
+		checkbox.addEventListener("change", () => handlers.onToggleCalendar(calendar.id));
+		mount(row, el("span", { cls: "byc-filter-name", text: calendar.name }));
+		mount(
+			row,
+			el("span", {
+				cls: "byc-filter-meta",
+				text: calendar.imported ? `(${calendar.eventCount})` : "(not imported)",
+			}),
+		);
 		const swatch = mount(row, el("span", { cls: "byc-swatch" }));
-		swatch.style.background =
-			state.events.find((event) => event.calendar === name)?.color ?? "#A9C7E8";
+		swatch.style.background = calendar.color;
 	}
 }
 

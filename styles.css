@@ -302,6 +302,20 @@ button.byc-mode-option:focus-visible {
 	background: var(--byc-hover);
 }
 
+.byc-menu-action:disabled {
+	opacity: 0.45;
+	cursor: default;
+	background: transparent;
+}
+
+.byc-filter-actions {
+	display: flex;
+	flex-direction: column;
+	padding-top: 4px;
+	border-top: 1px solid var(--byc-line);
+	margin-top: 4px;
+}
+
 .byc-filter-section {
 	padding: 8px 8px 2px;
 	font-size: 11px;
@@ -320,15 +334,44 @@ button.byc-mode-option:focus-visible {
 	cursor: pointer;
 }
 
+.byc-filter-name {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.byc-filter-meta {
+	flex-shrink: 0;
+	font-size: 11px;
+	color: var(--byc-muted);
+	white-space: nowrap;
+}
+
+.byc-filter-row.is-not-imported .byc-filter-name {
+	color: var(--byc-muted);
+}
+
 .byc-swatch {
 	width: 10px;
 	height: 10px;
 	border-radius: 99px;
-	margin-left: auto;
+	flex-shrink: 0;
+}
+
+.byc-board-host {
+	flex: 1;
+	min-width: 0;
+	min-height: 0;
+	position: relative;
+	display: flex;
+	flex-direction: column;
 }
 
 .byc-board {
 	flex: 1;
+	min-height: 0;
 	overflow: auto;
 	padding: 0 8px 16px;
 	position: relative;
@@ -501,13 +544,17 @@ button.byc-mode-option.is-active {
 	margin-top: 4px;
 }
 
-.byc-board.has-empty-overlay {
-	position: relative;
+.byc-board-host > .byc-empty {
+	position: absolute;
+	top: 16px;
+	left: 16px;
+	margin: 0;
+	max-width: min(360px, calc(100% - 32px));
+	z-index: 6;
 }
 
-.byc-board.has-empty-overlay .byc-empty {
-	position: sticky;
-	top: 16px;
+.byc-board.has-empty-overlay {
+	position: relative;
 }
 
 .byc-board.has-empty-overlay .byc-table,

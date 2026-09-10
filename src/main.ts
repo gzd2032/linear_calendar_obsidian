@@ -1,5 +1,11 @@
 import { Notice, Plugin } from "obsidian";
-import { GOOGLE_HOLIDAYS_NAME, GOOGLE_US_HOLIDAYS_ICS_URL, icsUrlIssue } from "./ics";
+import { migrateHiddenCalendarIds } from "./calendar-paths";
+import {
+	GOOGLE_HOLIDAYS_NAME,
+	GOOGLE_US_HOLIDAYS_ICS_URL,
+	GOOGLE_US_HOLIDAYS_SOURCE_ID,
+	icsUrlIssue,
+} from "./ics";
 import { runIcsImport, showIcsImportNotice, testIcsFeed } from "./ics-import";
 import { asIcsSources, DEFAULT_SETTINGS, LinearYearCalendarSettingTab } from "./settings";
 import type { IcsSource, PluginSettings } from "./types";
@@ -172,7 +178,7 @@ export default class LinearYearCalendarPlugin extends Plugin {
 			...(this.settings.googleHolidaysEnabled
 				? [
 						{
-							id: "google-us-holidays",
+							id: GOOGLE_US_HOLIDAYS_SOURCE_ID,
 							name: GOOGLE_HOLIDAYS_NAME,
 							url: GOOGLE_US_HOLIDAYS_ICS_URL,
 							color: this.settings.googleHolidaysColor,
@@ -216,6 +222,15 @@ export default class LinearYearCalendarPlugin extends Plugin {
 				? this.settings.icsRefreshResults
 				: [];
 			this.settings.settingsVersion = 6;
+			await this.saveSettings();
+		}
+		// v7: hidden calendars keyed by local:/google: ids instead of display name
+		if ((data.settingsVersion ?? 0) < 7) {
+			this.settings.hiddenCalendars = migrateHiddenCalendarIds(
+				this.settings.hiddenCalendars ?? [],
+				this.settings.icsSources,
+			);
+			this.settings.settingsVersion = 7;
 			await this.saveSettings();
 		}
 	}
