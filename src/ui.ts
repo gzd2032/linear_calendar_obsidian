@@ -5,6 +5,7 @@ import {
 	buildYearGrid,
 	daysInMonth,
 	formatEventRange,
+	formatEventTooltip,
 	formatISODate,
 	maxLanes,
 	monthLabel,
@@ -565,7 +566,7 @@ function renderRowBoard(
 	table.style.setProperty("--byc-cols", String(grid.colCount));
 	const wide = board.closest(".byc-root")?.classList.contains("is-wide") ?? false;
 	const headPx = wide ? 20 : 18;
-	const lanePx = wide ? 30 : grid.mode === "linear" ? 26 : 24;
+	const lanePx = wide ? 32 : grid.mode === "linear" ? 28 : 26;
 	const padPx = 4;
 	const showToday = today.year === today.todayYear;
 
@@ -735,8 +736,10 @@ function renderMonthList(
 				) as HTMLButtonElement;
 				eventBtn.style.background = event.color;
 				eventBtn.style.color = contrastingTextColor(event.color);
+				wireEventHoverTip(eventBtn, formatEventTooltip(event));
 				eventBtn.addEventListener("click", (ev) => {
 					ev.stopPropagation();
+					hideEventHoverTip();
 					handlers.onEventClick(event, eventBtn, { x: ev.clientX, y: ev.clientY });
 				});
 			}
@@ -751,6 +754,7 @@ function mountEventBar(
 	column: boolean,
 ): void {
 	const range = formatEventRange(segment.event.start, segment.event.end);
+	const tipText = formatEventTooltip(segment.event);
 	const bar = mount(
 		parent,
 		el("button", {
@@ -772,11 +776,54 @@ function mountEventBar(
 	bar.dataset.eventId = segment.event.id;
 	bar.style.background = segment.event.color;
 	bar.style.color = contrastingTextColor(segment.event.color);
+	wireEventHoverTip(bar, tipText);
 	bar.addEventListener("click", (event) => {
 		event.stopPropagation();
+		hideEventHoverTip();
 		handlers.onEventClick(segment.event, bar, { x: event.clientX, y: event.clientY });
 	});
 	bar.addEventListener("pointerdown", (event) => event.stopPropagation());
+}
+
+let eventHoverTip: HTMLElement | null = null;
+
+function wireEventHoverTip(target: HTMLElement, text: string): void {
+	target.addEventListener("pointerenter", (event) => {
+		showEventHoverTip(text, event.clientX, event.clientY);
+	});
+	target.addEventListener("pointermove", (event) => {
+		placeEventHoverTip(event.clientX, event.clientY);
+	});
+	target.addEventListener("pointerleave", () => {
+		hideEventHoverTip();
+	});
+}
+
+function showEventHoverTip(text: string, clientX: number, clientY: number): void {
+	if (!eventHoverTip) {
+		eventHoverTip = el("div", { cls: "byc-event-hover-tip" });
+		document.body.appendChild(eventHoverTip);
+	}
+	eventHoverTip.textContent = text;
+	eventHoverTip.hidden = false;
+	placeEventHoverTip(clientX, clientY);
+}
+
+function placeEventHoverTip(clientX: number, clientY: number): void {
+	if (!eventHoverTip || eventHoverTip.hidden) return;
+	const pad = 12;
+	const w = eventHoverTip.offsetWidth || 180;
+	const h = eventHoverTip.offsetHeight || 40;
+	let left = clientX + pad;
+	let top = clientY + pad;
+	if (left + w > window.innerWidth - 8) left = clientX - w - pad;
+	if (top + h > window.innerHeight - 8) top = clientY - h - pad;
+	eventHoverTip.style.left = `${Math.max(8, left)}px`;
+	eventHoverTip.style.top = `${Math.max(8, top)}px`;
+}
+
+function hideEventHoverTip(): void {
+	if (eventHoverTip) eventHoverTip.hidden = true;
 }
 
 export function defaultTodayIso(): string {

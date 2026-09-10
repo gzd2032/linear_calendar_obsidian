@@ -492,6 +492,23 @@ button.byc-mode-option:focus-visible {
 	white-space: nowrap;
 }
 
+.byc-event-hover-tip {
+	position: fixed;
+	z-index: 50;
+	pointer-events: none;
+	padding: 6px 10px;
+	border-radius: 8px;
+	background: var(--byc-elevated);
+	color: var(--byc-text);
+	border: 1px solid var(--byc-line);
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 1.35;
+	white-space: pre-line;
+	box-shadow: var(--byc-shadow);
+	max-width: min(280px, calc(100vw - 16px));
+}
+
 .byc-table {
 	min-width: 1100px;
 }
@@ -500,7 +517,7 @@ button.byc-mode-option:focus-visible {
 .byc-root.is-wide {
 	--byc-wide-day: 80px;
 	--byc-wide-dayhead: 20px;
-	--byc-wide-lane: 30px;
+	--byc-wide-lane: 32px;
 	--byc-wide-pad: 4px;
 	--byc-event-inset-x: 8px;
 }
@@ -551,12 +568,14 @@ button.byc-mode-option:focus-visible {
 }
 
 .byc-root.is-wide .byc-event {
-	margin: 2px var(--byc-event-inset-x);
+	margin: 3px var(--byc-event-inset-x);
 	padding: 2px 8px;
 	font-size: 11px;
 	border-radius: 4px;
 	line-height: 1.2;
 	min-height: 0;
+	height: calc(100% - 6px);
+	max-height: calc(100% - 6px);
 }
 
 .byc-root.is-wide .byc-month-label {
@@ -807,7 +826,8 @@ button.byc-mode-option:focus-visible {
 
 .byc-event {
 	z-index: 2;
-	margin: 2px var(--byc-event-inset-x);
+	/* Margin alone is not enough when max-height:100% overflows the lane into the next. */
+	margin: 3px var(--byc-event-inset-x);
 	border-radius: 4px;
 	padding: 1px 5px;
 	font-size: 10px;
@@ -820,7 +840,9 @@ button.byc-mode-option:focus-visible {
 	cursor: pointer;
 	box-sizing: border-box;
 	min-height: 0;
-	max-height: 100%;
+	height: calc(100% - 6px);
+	max-height: calc(100% - 6px);
+	align-self: center;
 	box-shadow: 0 1px 0 color-mix(in srgb, var(--byc-text) 8%, transparent);
 	transition: filter 140ms ease, box-shadow 140ms ease;
 }
@@ -891,10 +913,12 @@ button.byc-event {
 
 .byc-column-event {
 	z-index: 2;
-	margin: 2px 3px 2px 2px;
+	margin: 2px 3px;
 	min-width: 0;
 	writing-mode: horizontal-tb;
-	align-self: stretch;
+	align-self: center;
+	height: calc(100% - 4px);
+	max-height: calc(100% - 4px);
 }
 
 .byc-column-gutter {
