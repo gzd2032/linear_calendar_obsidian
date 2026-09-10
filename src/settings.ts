@@ -1,5 +1,7 @@
 import { type App, PluginSettingTab, Setting } from "obsidian";
-import { normalizeIcsUrl } from "./ics";
+import { ConfirmModal } from "./confirm-modal";
+import { setCssProps } from "./dom";
+import { icsUrlIssue, normalizeIcsUrl } from "./ics";
 import type LinearYearCalendarPlugin from "./main";
 import { PASTEL_COLORS, type IcsSource, type PluginSettings, type ViewMode } from "./types";
 
@@ -172,18 +174,19 @@ export class LinearYearCalendarSettingTab extends PluginSettingTab {
 	}
 
 	private renderCompactSource(containerEl: HTMLElement, source: IcsSource, index: number): void {
-		const row = new Setting(containerEl);
-		row.settingEl.addClass("byc-ics-compact");
-		row.settingEl.dataset.icsId = source.id;
+		const card = containerEl.createDiv({ cls: "byc-ics-card" });
+		card.dataset.icsId = source.id;
+		setCssProps(card, { "--byc-ics-accent": source.color });
 
-		row.addColorPicker((picker) => {
+		new Setting(card).setName("Color").addColorPicker((picker) => {
 			picker.setValue(source.color).onChange(async (value) => {
 				source.color = value;
+				setCssProps(card, { "--byc-ics-accent": value });
 				await this.plugin.saveSettings();
 			});
 		});
 
-		row.addText((text) => {
+		new Setting(card).setName("Name").addText((text) => {
 			text.setPlaceholder("Name").setValue(source.name).onChange(async (value) => {
 				source.name = value;
 				await this.plugin.saveSettings();
@@ -192,7 +195,15 @@ export class LinearYearCalendarSettingTab extends PluginSettingTab {
 			text.inputEl.setAttribute("aria-label", "Calendar name");
 		});
 
-		row.addText((text) => {
+		const urlSetting = new Setting(card).setName("ICS URL");
+		urlSetting.setDesc("Secret iCal address. Hidden until you reveal it.");
+		let urlRevealed = false;
+		const applyUrlHint = (): void => {
+			const issue = icsUrlIssue(source.url);
+			urlSetting.setDesc(issue ?? "Secret iCal address. Hidden until you reveal it.");
+			urlSetting.settingEl.classList.toggle("is-invalid", Boolean(issue));
+		};
+		urlSetting.addText((text) => {
 			text
 				.setPlaceholder("https://calendar.google.com/calendar/ical/…")
 				.setValue(source.url)
@@ -201,23 +212,47 @@ export class LinearYearCalendarSettingTab extends PluginSettingTab {
 					source.url = next;
 					if (next !== value) text.setValue(next);
 					await this.plugin.saveSettings();
+					applyUrlHint();
 				});
 			text.inputEl.addClass("byc-ics-url-input");
 			text.inputEl.setAttribute("aria-label", "ICS URL");
+			text.inputEl.setAttribute("autocomplete", "off");
+			text.inputEl.setAttribute("spellcheck", "false");
+			text.inputEl.type = "password";
+			text.inputEl.addEventListener("blur", () => applyUrlHint());
 		});
-
-		row.addToggle((toggle) => {
-			toggle.setValue(source.enabled).onChange(async (value) => {
-				source.enabled = value;
-				await this.plugin.saveSettings();
+		const urlInput = urlSetting.controlEl.querySelector(".byc-ics-url-input");
+		urlSetting.addExtraButton((btn) => {
+			btn.setIcon("eye").setTooltip("Show URL").onClick(() => {
+				urlRevealed = !urlRevealed;
+				if (urlInput instanceof HTMLInputElement) {
+					urlInput.type = urlRevealed ? "text" : "password";
+				}
+				btn.setIcon(urlRevealed ? "eye-off" : "eye");
+				btn.setTooltip(urlRevealed ? "Hide URL" : "Show URL");
 			});
 		});
+		applyUrlHint();
 
-		row.addExtraButton((btn) => {
-			btn.setIcon("trash-2").setTooltip("Remove").onClick(() => {
-				void this.removeIcsSource(index);
+		new Setting(card)
+			.setName("Enabled")
+			.setDesc("When off, skip this calendar on Refresh.")
+			.addToggle((toggle) => {
+				toggle.setValue(source.enabled).onChange(async (value) => {
+					source.enabled = value;
+					await this.plugin.saveSettings();
+				});
+			})
+			.addExtraButton((btn) => {
+				btn.setIcon("trash-2").setTooltip("Remove").onClick(() => {
+					const name = source.name.trim() || "this calendar";
+					new ConfirmModal(
+						this.app,
+						`Remove “${name}” from Google calendars?\n\nNotes already imported are not deleted.`,
+						() => this.removeIcsSource(index),
+					).open();
+				});
 			});
-		});
 	}
 
 	private async addIcsSource(): Promise<void> {

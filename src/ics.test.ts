@@ -4,6 +4,7 @@ import {
 	diagnoseIcs,
 	icsTextFromResponse,
 	isIcsCalendar,
+	icsUrlIssue,
 	normalizeIcsUrl,
 	parseIcs,
 } from "./ics";
@@ -94,5 +95,21 @@ describe("normalizeIcsUrl", () => {
 	it("rewrites webcal to https", () => {
 		expect(normalizeIcsUrl("webcal://example.com/cal.ics")).toBe("https://example.com/cal.ics");
 		expect(normalizeIcsUrl(" https://example.com/cal.ics ")).toBe("https://example.com/cal.ics");
+	});
+});
+
+describe("icsUrlIssue", () => {
+	it("allows empty URLs", () => {
+		expect(icsUrlIssue("")).toBeNull();
+		expect(icsUrlIssue("   ")).toBeNull();
+	});
+
+	it("accepts http(s) and webcal calendar URLs", () => {
+		expect(icsUrlIssue("https://calendar.google.com/calendar/ical/x/private/basic.ics")).toBeNull();
+		expect(icsUrlIssue("webcal://example.com/cal.ics")).toBeNull();
+	});
+
+	it("rejects non-URLs", () => {
+		expect(icsUrlIssue("not a url")).toBe("That doesn’t look like a valid calendar URL.");
 	});
 });

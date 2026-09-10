@@ -1000,6 +1000,36 @@ button.byc-event {
 	padding: 0.35em 0 0.75em;
 }
 
+.byc-ics-card {
+	--byc-ics-accent: var(--interactive-accent);
+	margin: 10px 0;
+	padding: 2px 10px 8px;
+	border: 1px solid var(--background-modifier-border);
+	border-left: 4px solid var(--byc-ics-accent);
+	border-radius: 8px;
+	background: var(--background-secondary);
+}
+
+.byc-ics-card .setting-item {
+	padding: 0.45em 0;
+	border-top: none;
+}
+
+.byc-ics-card .byc-ics-name,
+.byc-ics-card .byc-ics-url-input {
+	min-width: 12em;
+	width: min(28em, 100%);
+}
+
+.byc-ics-card.is-invalid .setting-item-description,
+.byc-ics-card .setting-item.is-invalid .setting-item-description {
+	color: var(--text-error);
+}
+
+.byc-confirm-msg {
+	white-space: pre-wrap;
+}
+
 .byc-ics-compact {
 	padding: 0.35em 0;
 	border-top: 1px solid var(--background-modifier-border);

@@ -16,7 +16,7 @@ export class ConfirmModal extends Modal {
 	onOpen(): void {
 		const { contentEl } = this;
 		contentEl.empty();
-		contentEl.createEl("p", { text: this.message });
+		contentEl.createEl("p", { cls: "byc-confirm-msg", text: this.message });
 		const row = contentEl.createDiv({ cls: "modal-button-container" });
 		const cancel = row.createEl("button", { text: "Cancel" });
 		cancel.addEventListener("click", () => this.close());
