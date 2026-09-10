@@ -215,9 +215,12 @@
 }
 
 .byc-menu-compact {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
 	min-width: 0;
 	width: max-content;
-	padding: 4px;
+	padding: 6px;
 	left: 50%;
 	right: auto;
 	transform: translateX(-50%);
@@ -228,8 +231,11 @@
 }
 
 button.byc-mode-option {
-	display: block;
-	width: auto;
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	gap: 0;
+	width: 100%;
 	white-space: nowrap;
 	text-align: left;
 	border: 0;
@@ -237,12 +243,12 @@ button.byc-mode-option {
 	box-shadow: none;
 	background: transparent;
 	background-color: transparent;
-	border-radius: 0;
-	padding: 6px 10px;
+	border-radius: 8px;
+	padding: 7px 10px;
 	cursor: pointer;
 	font: inherit;
 	font-size: 13px;
-	font-weight: 700;
+	font-weight: 600;
 	color: var(--byc-text);
 	-webkit-appearance: none;
 	appearance: none;
@@ -251,8 +257,7 @@ button.byc-mode-option {
 button.byc-mode-option:hover,
 button.byc-mode-option:focus,
 button.byc-mode-option:focus-visible,
-button.byc-mode-option:active,
-button.byc-mode-option.is-active {
+button.byc-mode-option:active {
 	background: transparent;
 	background-color: transparent;
 	box-shadow: none;
@@ -452,6 +457,27 @@ button.byc-mode-option:focus-visible {
 	width: min(160px, 40vw);
 }
 
+button.byc-mode-option.is-active {
+	background: color-mix(in srgb, var(--byc-accent) 16%, var(--byc-surface));
+	background-color: color-mix(in srgb, var(--byc-accent) 16%, var(--byc-surface));
+	color: var(--byc-text);
+	border-radius: 8px;
+}
+
+.byc-mode-option-head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-weight: 700;
+}
+
+.byc-mode-check {
+	flex: 0 0 1em;
+	width: 1em;
+	text-align: center;
+	color: var(--byc-today-text);
+}
+
 .byc-empty {
 	display: flex;
 	flex-direction: column;
@@ -464,6 +490,32 @@ button.byc-mode-option:focus-visible {
 	border-radius: 14px;
 	box-shadow: var(--byc-shadow);
 	max-width: 360px;
+	position: relative;
+	z-index: 6;
+}
+
+.byc-empty-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-top: 4px;
+}
+
+.byc-board.has-empty-overlay {
+	position: relative;
+}
+
+.byc-board.has-empty-overlay .byc-empty {
+	position: sticky;
+	top: 16px;
+}
+
+.byc-board.has-empty-overlay .byc-table,
+.byc-board.has-empty-overlay .byc-column-wrap,
+.byc-board.has-empty-overlay .byc-month-list {
+	opacity: 0.35;
+	pointer-events: none;
+	user-select: none;
 }
 
 .byc-empty-title {
@@ -506,6 +558,8 @@ button.byc-mode-option:focus-visible {
 
 /* Cursor-following event tip. Opaque message colors so text stays readable. */
 .byc-event-hover-tip {
+	--byc-tip-arrow: 6px;
+	--byc-tip-arrow-y: 50%;
 	position: fixed;
 	z-index: var(--layer-tooltip, 10000);
 	pointer-events: none;
@@ -521,6 +575,28 @@ button.byc-mode-option:focus-visible {
 	opacity: 1;
 	box-shadow: var(--shadow-s, 0 2px 8px rgba(0, 0, 0, 0.18));
 	max-width: min(280px, calc(100vw - 16px));
+}
+
+.byc-event-hover-tip-arrow {
+	position: absolute;
+	width: 0;
+	height: 0;
+	top: var(--byc-tip-arrow-y);
+	transform: translateY(-50%);
+	border: var(--byc-tip-arrow) solid transparent;
+}
+
+.byc-event-hover-tip.is-end-right .byc-event-hover-tip-arrow {
+	left: calc(var(--byc-tip-arrow) * -1);
+	border-right-color: var(--background-modifier-message, #2a2a2a);
+	border-left-width: 0;
+}
+
+.byc-event-hover-tip.is-end-left .byc-event-hover-tip-arrow {
+	right: calc(var(--byc-tip-arrow) * -1);
+	left: auto;
+	border-left-color: var(--background-modifier-message, #2a2a2a);
+	border-right-width: 0;
 }
 
 .byc-table {

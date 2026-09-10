@@ -113,6 +113,13 @@ export function viewLabel(mode: string): string {
 	return "Stacked";
 }
 
+export function viewBlurb(mode: string): string {
+	if (mode === "linear") return "One row per month, days 1–31 across";
+	if (mode === "column") return "Days down, months across";
+	if (mode === "col-stack") return "Weekdays stacked in month columns";
+	return "Months as rows with weekdays aligned";
+}
+
 export function uniqueCalendars(events: { calendar: string }[]): string[] {
 	return [...new Set(events.map((event) => event.calendar))].sort();
 }
@@ -142,12 +149,49 @@ export function padDay(day: number): string {
 export function emptyState(
 	board: HTMLElement,
 	opts: {
-		query: boolean;
-		hiddenCount: number;
+		kind: "onboarding" | "filtered" | "empty-year";
+		query?: boolean;
+		hiddenCount?: number;
 		onShowAll?: () => void;
+		onOpenSettings?: () => void;
+		onRefresh?: () => void;
 	},
 ): void {
-	const empty = mount(board, div("byc-empty"));
+	const empty = mount(board, div(`byc-empty byc-empty-${opts.kind}`));
+	if (opts.kind === "onboarding") {
+		mount(empty, div("byc-empty-title", "No events yet"));
+		mount(
+			empty,
+			div(
+				"byc-empty-copy",
+				"Drag across days to create a local event, or add a Google Calendar ICS feed in settings.",
+			),
+		);
+		const actions = mount(empty, div("byc-empty-actions"));
+		if (opts.onOpenSettings) {
+			const settingsBtn = mount(
+				actions,
+				el("button", { cls: "byc-btn byc-btn-accent", type: "button", text: "ICS settings" }),
+			);
+			settingsBtn.addEventListener("click", () => opts.onOpenSettings?.());
+		}
+		if (opts.onRefresh) {
+			const refreshBtn = mount(
+				actions,
+				el("button", { cls: "byc-btn", type: "button", text: "Refresh" }),
+			);
+			refreshBtn.addEventListener("click", () => opts.onRefresh?.());
+		}
+		return;
+	}
+	if (opts.kind === "empty-year") {
+		mount(empty, div("byc-empty-title", "Nothing in this year"));
+		mount(
+			empty,
+			div("byc-empty-copy", "Drag across days to create an event, or switch years in the toolbar."),
+		);
+		return;
+	}
 	mount(
 		empty,
 		div(
@@ -164,7 +208,7 @@ export function emptyState(
 				: "Turn calendars back on in Filters, or show everything.",
 		),
 	);
-	if (opts.hiddenCount > 0 && opts.onShowAll) {
+	if ((opts.hiddenCount ?? 0) > 0 && opts.onShowAll) {
 		const btn = mount(
 			empty,
 			el("button", { cls: "byc-btn byc-btn-accent", type: "button", text: "Show all" }),

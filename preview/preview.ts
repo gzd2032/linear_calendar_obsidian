@@ -296,6 +296,12 @@ function paint(): void {
 			onRangeSelect: (start, end) => {
 				setPreviewStatus(`Create event ${start} → ${end}`);
 			},
+			onOpenSettings: () => {
+				setPreviewStatus("Open ICS settings");
+			},
+			onRefresh: () => {
+				setPreviewStatus("Refresh ICS calendars");
+			},
 		},
 	);
 }

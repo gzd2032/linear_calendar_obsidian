@@ -29,6 +29,7 @@ import {
 	refreshIcon,
 	spinnerIcon,
 	toggleMenu,
+	viewBlurb,
 	viewLabel,
 } from "./ui-helpers";
 
@@ -69,6 +70,7 @@ export interface CalendarUIHandlers {
 	onEventClick: (event: CalendarEvent, anchor: HTMLElement, pointer?: { x: number; y: number }) => void;
 	onRangeSelect: (start: string, end: string) => void;
 	onRefresh?: () => void;
+	onOpenSettings?: () => void;
 }
 
 const boardScrollMemory = new WeakMap<
@@ -118,11 +120,25 @@ export function renderCalendar(
 	);
 
 	const board = mount(root, div("byc-board"));
-	if (visibleEvents.length === 0 && state.events.length > 0 && (hiddenCount > 0 || Boolean(query))) {
+	const queryActive = Boolean(query);
+	const yearEvents = visibleEvents.filter((event) => eventOverlapsYear(event, state.year));
+	if (state.events.length === 0) {
 		emptyState(board, {
-			query: Boolean(query),
+			kind: "onboarding",
+			onOpenSettings: handlers.onOpenSettings,
+			onRefresh: handlers.onRefresh,
+		});
+	} else if (visibleEvents.length === 0 && (hiddenCount > 0 || queryActive)) {
+		board.classList.add("has-empty-overlay");
+		emptyState(board, {
+			kind: "filtered",
+			query: queryActive,
 			hiddenCount,
 			onShowAll: handlers.onShowAllCalendars,
+		});
+	} else if (yearEvents.length === 0) {
+		emptyState(board, {
+			kind: "empty-year",
 		});
 	}
 
@@ -244,6 +260,12 @@ function filterVisibleEvents(
 		if (query && !event.title.toLowerCase().includes(query)) return false;
 		return true;
 	});
+}
+
+function eventOverlapsYear(event: CalendarEvent, year: number): boolean {
+	const start = `${year}-01-01`;
+	const end = `${year}-12-31`;
+	return event.start <= end && event.end >= start;
 }
 
 function renderToolbar(
@@ -482,11 +504,19 @@ function addModeOption(
 		el("button", {
 			cls: "byc-mode-option",
 			type: "button",
-			attr: { role: "menuitem" },
+			attr: {
+				role: "menuitem",
+				"aria-label": viewBlurb(mode),
+			},
 		}),
 	);
-	if (mode === active) option.classList.add("is-active");
-	option.textContent = title;
+	if (mode === active) {
+		option.classList.add("is-active");
+		option.setAttribute("aria-current", "true");
+	}
+	const head = mount(option, div("byc-mode-option-head"));
+	mount(head, el("span", { cls: "byc-mode-check", text: mode === active ? "✓" : "" }));
+	mount(head, el("span", { cls: "byc-mode-option-title", text: title }));
 	option.addEventListener("click", () => handlers.onModeChange(mode));
 }
 
@@ -838,12 +868,15 @@ function scheduleEventHoverTip(text: string, clientX: number, clientY: number): 
 function showEventHoverTip(text: string, clientX: number, clientY: number): void {
 	if (!eventHoverTip) {
 		eventHoverTip = el("div", {
-			cls: "byc-event-hover-tip",
+			cls: "byc-event-hover-tip is-end-right",
 			attr: { role: "tooltip" },
 		});
+		mount(eventHoverTip, el("div", { cls: "byc-event-hover-tip-arrow" }));
+		mount(eventHoverTip, el("div", { cls: "byc-event-hover-tip-text" }));
 		document.body.appendChild(eventHoverTip);
 	}
-	eventHoverTip.textContent = text;
+	const textEl = eventHoverTip.querySelector(".byc-event-hover-tip-text");
+	if (textEl) textEl.textContent = text;
 	eventHoverTip.hidden = false;
 	placeEventHoverTip(clientX, clientY);
 }
@@ -854,16 +887,24 @@ function placeEventHoverTip(clientX: number, clientY: number): void {
 		eventHoverTipPending.x = clientX;
 		eventHoverTipPending.y = clientY;
 	}
-	const pad = 14;
+	const pad = 22;
 	const w = eventHoverTip.offsetWidth || 180;
 	const h = eventHoverTip.offsetHeight || 40;
 	let left = clientX + pad;
+	let side: "right" | "left" = "right";
+	if (left + w > window.innerWidth - 8) {
+		left = clientX - w - pad;
+		side = "left";
+	}
 	let top = clientY - h / 2;
-	if (left + w > window.innerWidth - 8) left = clientX - w - pad;
 	if (top + h > window.innerHeight - 8) top = window.innerHeight - h - 8;
 	if (top < 8) top = 8;
+	const arrowY = Math.min(h - 10, Math.max(10, clientY - top));
+	eventHoverTip.classList.toggle("is-end-right", side === "right");
+	eventHoverTip.classList.toggle("is-end-left", side === "left");
 	eventHoverTip.style.left = `${left}px`;
 	eventHoverTip.style.top = `${Math.max(8, top)}px`;
+	setCssProps(eventHoverTip, { "--byc-tip-arrow-y": `${arrowY}px` });
 }
 
 function hideEventHoverTip(): void {

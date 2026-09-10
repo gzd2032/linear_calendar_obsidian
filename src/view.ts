@@ -149,7 +149,8 @@ export class YearCalendarView extends ItemView {
 				onModeChange: (mode) => {
 					this.mode = mode;
 					this.plugin.settings.defaultView = mode;
-					void this.plugin.saveSettings().then(() => this.render());
+					this.render();
+					void this.plugin.saveSettings();
 				},
 				onSearchChange: (query) => {
 					this.search = query;
@@ -178,6 +179,15 @@ export class YearCalendarView extends ItemView {
 				},
 				onRefresh: () => {
 					void this.refreshIcs();
+				},
+				onOpenSettings: () => {
+					const setting = (
+						this.app as typeof this.app & {
+							setting?: { open: () => void; openTabById: (id: string) => void };
+						}
+					).setting;
+					setting?.open();
+					setting?.openTabById(this.plugin.manifest.id);
 				},
 			},
 		);
