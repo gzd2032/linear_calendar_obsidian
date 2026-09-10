@@ -492,20 +492,21 @@ button.byc-mode-option:focus-visible {
 	white-space: nowrap;
 }
 
+/* Cursor-following event tip (not Obsidian’s .tooltip — that anchors to element center). */
 .byc-event-hover-tip {
 	position: fixed;
-	z-index: 50;
+	z-index: var(--layer-tooltip, 10000);
 	pointer-events: none;
-	padding: 6px 10px;
-	border-radius: 8px;
-	background: var(--byc-elevated);
-	color: var(--byc-text);
-	border: 1px solid var(--byc-line);
-	font-size: 12px;
-	font-weight: 600;
+	padding: 4px 8px;
+	border-radius: var(--radius-s, 4px);
+	background-color: var(--background-modifier-message, var(--background-secondary));
+	color: var(--text-normal);
+	font-size: var(--font-ui-smaller, 12px);
+	font-weight: var(--font-normal, 400);
 	line-height: 1.35;
 	white-space: pre-line;
-	box-shadow: var(--byc-shadow);
+	text-align: left;
+	box-shadow: var(--shadow-s, 0 2px 8px rgba(0, 0, 0, 0.12));
 	max-width: min(280px, calc(100vw - 16px));
 }
 
@@ -568,14 +569,14 @@ button.byc-mode-option:focus-visible {
 }
 
 .byc-root.is-wide .byc-event {
-	margin: 3px var(--byc-event-inset-x);
+	margin: 1.5px var(--byc-event-inset-x);
 	padding: 2px 8px;
 	font-size: 11px;
 	border-radius: 4px;
 	line-height: 1.2;
 	min-height: 0;
-	height: calc(100% - 6px);
-	max-height: calc(100% - 6px);
+	height: calc(100% - 3px);
+	max-height: calc(100% - 3px);
 }
 
 .byc-root.is-wide .byc-month-label {
@@ -827,7 +828,7 @@ button.byc-mode-option:focus-visible {
 .byc-event {
 	z-index: 2;
 	/* Margin alone is not enough when max-height:100% overflows the lane into the next. */
-	margin: 3px var(--byc-event-inset-x);
+	margin: 1.5px var(--byc-event-inset-x);
 	border-radius: 4px;
 	padding: 1px 5px;
 	font-size: 10px;
@@ -840,8 +841,8 @@ button.byc-mode-option:focus-visible {
 	cursor: pointer;
 	box-sizing: border-box;
 	min-height: 0;
-	height: calc(100% - 6px);
-	max-height: calc(100% - 6px);
+	height: calc(100% - 3px);
+	max-height: calc(100% - 3px);
 	align-self: center;
 	box-shadow: 0 1px 0 color-mix(in srgb, var(--byc-text) 8%, transparent);
 	transition: filter 140ms ease, box-shadow 140ms ease;

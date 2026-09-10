@@ -734,6 +734,7 @@ function renderMonthList(
 						},
 					}),
 				) as HTMLButtonElement;
+				suppressNativeTooltip(eventBtn);
 				eventBtn.style.background = event.color;
 				eventBtn.style.color = contrastingTextColor(event.color);
 				wireEventHoverTip(eventBtn, formatEventTooltip(event));
@@ -766,6 +767,7 @@ function mountEventBar(
 			},
 		}),
 	) as HTMLButtonElement;
+	suppressNativeTooltip(bar);
 	if (column) {
 		bar.style.gridRow = `${segment.startCol + 1} / ${segment.endCol + 2}`;
 		bar.style.gridColumn = String(segment.lane + 2);
@@ -786,22 +788,52 @@ function mountEventBar(
 }
 
 let eventHoverTip: HTMLElement | null = null;
+let eventHoverTipTimer: number | null = null;
+let eventHoverTipPending: { text: string; x: number; y: number } | null = null;
+
+/** Strip native `title` tooltips (they center on long multi-day bars). */
+function suppressNativeTooltip(target: HTMLElement): void {
+	target.removeAttribute("title");
+	// Empty title blocks Chromium’s truncated-text overflow tip on some builds.
+	target.title = "";
+}
 
 function wireEventHoverTip(target: HTMLElement, text: string): void {
+	suppressNativeTooltip(target);
 	target.addEventListener("pointerenter", (event) => {
-		showEventHoverTip(text, event.clientX, event.clientY);
+		suppressNativeTooltip(target);
+		scheduleEventHoverTip(text, event.clientX, event.clientY);
 	});
 	target.addEventListener("pointermove", (event) => {
-		placeEventHoverTip(event.clientX, event.clientY);
+		suppressNativeTooltip(target);
+		if (eventHoverTip && !eventHoverTip.hidden) {
+			placeEventHoverTip(event.clientX, event.clientY);
+		} else {
+			scheduleEventHoverTip(text, event.clientX, event.clientY);
+		}
 	});
 	target.addEventListener("pointerleave", () => {
 		hideEventHoverTip();
 	});
 }
 
+function scheduleEventHoverTip(text: string, clientX: number, clientY: number): void {
+	eventHoverTipPending = { text, x: clientX, y: clientY };
+	if (eventHoverTipTimer !== null) return;
+	eventHoverTipTimer = window.setTimeout(() => {
+		eventHoverTipTimer = null;
+		const pending = eventHoverTipPending;
+		if (!pending) return;
+		showEventHoverTip(pending.text, pending.x, pending.y);
+	}, 280);
+}
+
 function showEventHoverTip(text: string, clientX: number, clientY: number): void {
 	if (!eventHoverTip) {
-		eventHoverTip = el("div", { cls: "byc-event-hover-tip" });
+		eventHoverTip = el("div", {
+			cls: "byc-event-hover-tip",
+			attr: { role: "tooltip" },
+		});
 		document.body.appendChild(eventHoverTip);
 	}
 	eventHoverTip.textContent = text;
@@ -811,18 +843,28 @@ function showEventHoverTip(text: string, clientX: number, clientY: number): void
 
 function placeEventHoverTip(clientX: number, clientY: number): void {
 	if (!eventHoverTip || eventHoverTip.hidden) return;
-	const pad = 12;
+	if (eventHoverTipPending) {
+		eventHoverTipPending.x = clientX;
+		eventHoverTipPending.y = clientY;
+	}
+	const pad = 14;
 	const w = eventHoverTip.offsetWidth || 180;
 	const h = eventHoverTip.offsetHeight || 40;
 	let left = clientX + pad;
-	let top = clientY + pad;
+	let top = clientY - h / 2;
 	if (left + w > window.innerWidth - 8) left = clientX - w - pad;
-	if (top + h > window.innerHeight - 8) top = clientY - h - pad;
-	eventHoverTip.style.left = `${Math.max(8, left)}px`;
+	if (top + h > window.innerHeight - 8) top = window.innerHeight - h - 8;
+	if (top < 8) top = 8;
+	eventHoverTip.style.left = `${left}px`;
 	eventHoverTip.style.top = `${Math.max(8, top)}px`;
 }
 
 function hideEventHoverTip(): void {
+	eventHoverTipPending = null;
+	if (eventHoverTipTimer !== null) {
+		window.clearTimeout(eventHoverTipTimer);
+		eventHoverTipTimer = null;
+	}
 	if (eventHoverTip) eventHoverTip.hidden = true;
 }
 
