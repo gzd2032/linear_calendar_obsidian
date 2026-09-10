@@ -49,7 +49,37 @@ export function packLanes(segments: Omit<EventSegment, "lane">[]): EventSegment[
 	return packed;
 }
 
+/** Event bars above this lane are hidden behind “+N more”. */
+export const MAX_VISIBLE_LANES = 4;
+
 export function maxLanes(segments: EventSegment[]): number {
 	if (segments.length === 0) return 1;
 	return Math.max(...segments.map((segment) => segment.lane)) + 1;
+}
+
+export function visibleLaneCount(segments: EventSegment[]): number {
+	return Math.min(maxLanes(segments), MAX_VISIBLE_LANES);
+}
+
+export function hasOverflowLanes(segments: EventSegment[]): boolean {
+	return maxLanes(segments) > MAX_VISIBLE_LANES;
+}
+
+export function overflowCountAtCol(segments: EventSegment[], col: number): number {
+	return segments.filter(
+		(segment) =>
+			segment.lane >= MAX_VISIBLE_LANES && segment.startCol <= col && segment.endCol >= col,
+	).length;
+}
+
+export function eventsAtCol(segments: EventSegment[], col: number): CalendarEvent[] {
+	const seen = new Set<string>();
+	const events: CalendarEvent[] = [];
+	for (const segment of segments) {
+		if (segment.startCol > col || segment.endCol < col) continue;
+		if (seen.has(segment.event.id)) continue;
+		seen.add(segment.event.id);
+		events.push(segment.event);
+	}
+	return events;
 }

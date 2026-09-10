@@ -1,5 +1,6 @@
 .byc-root,
-.byc-popover {
+.byc-popover,
+.byc-more-menu {
 	/* Calendar chrome maps fully to Obsidian theme tokens (light + dark). */
 	--byc-bg: var(--background-primary);
 	--byc-header: var(--background-secondary);
@@ -1003,6 +1004,117 @@ button.byc-event {
 .byc-event:hover {
 	filter: brightness(1.04);
 	box-shadow: var(--byc-shadow);
+}
+
+.byc-more {
+	z-index: 2;
+	appearance: none;
+	-webkit-appearance: none;
+	display: block;
+	box-sizing: border-box;
+	width: auto;
+	max-width: 100%;
+	min-width: 0;
+	min-height: 0;
+	height: 12px;
+	max-height: 12px;
+	margin: 1px var(--byc-event-inset-x, 6px) 0;
+	border: 0;
+	padding: 0 3px;
+	border-radius: 3px;
+	background: transparent;
+	color: var(--byc-muted);
+	font-family: inherit;
+	font-size: 9px;
+	font-weight: 700;
+	line-height: 12px;
+	text-align: left;
+	cursor: pointer;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	align-self: start;
+}
+
+button.byc-more {
+	appearance: none;
+	-webkit-appearance: none;
+	min-height: 0;
+	height: 12px;
+	max-height: 12px;
+}
+
+.byc-more:hover,
+.byc-list-events .byc-more:hover {
+	color: var(--byc-text);
+	background: var(--byc-hover);
+}
+
+.byc-more:focus-visible {
+	outline: 2px solid var(--byc-focus);
+	outline-offset: 1px;
+}
+
+.byc-list-events .byc-more {
+	margin: 0;
+	height: auto;
+	max-height: none;
+	min-height: 22px;
+	padding: 2px 8px;
+	font-size: 12px;
+	line-height: 1.2;
+	align-self: auto;
+}
+
+.byc-more-menu {
+	position: fixed;
+	z-index: 1000;
+	min-width: 180px;
+	max-width: 280px;
+	max-height: min(360px, 70vh);
+	overflow: auto;
+	padding: 8px;
+	border: 1px solid color-mix(in srgb, var(--byc-line) 65%, transparent);
+	border-radius: 12px;
+	background: color-mix(in srgb, var(--byc-elevated) 72%, transparent);
+	backdrop-filter: blur(10px);
+	-webkit-backdrop-filter: blur(10px);
+	box-shadow: var(--byc-shadow);
+	color: var(--byc-text);
+	font-family: var(--font-interface, var(--font-text), sans-serif);
+}
+
+.byc-more-menu-title {
+	font-size: 12px;
+	font-weight: 700;
+	color: var(--byc-muted);
+	padding: 2px 6px 8px;
+}
+
+.byc-more-menu-list {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.byc-more-menu-event {
+	appearance: none;
+	border: 0;
+	border-radius: 6px;
+	padding: 6px 8px;
+	font: inherit;
+	font-size: 12px;
+	font-weight: 600;
+	text-align: left;
+	cursor: pointer;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.byc-more-menu-event:focus-visible {
+	outline: 2px solid var(--byc-focus);
+	outline-offset: 1px;
 }
 
 /* Column view: months side by side, days top→bottom, events in-column */

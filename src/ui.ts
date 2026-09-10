@@ -2,16 +2,21 @@ import { wireCellDrag } from "./drag";
 import { div, el, mount, setCssProps } from "./dom";
 import { contrastingTextColor } from "./format";
 import {
+	MAX_VISIBLE_LANES,
 	buildYearGrid,
 	daysInMonth,
+	eventsAtCol,
 	formatEventRange,
 	formatEventTooltip,
 	formatISODate,
-	maxLanes,
+	formatShortDate,
+	hasOverflowLanes,
 	monthLabel,
+	overflowCountAtCol,
 	pad2,
 	parseISODate,
 	segmentsForMonth,
+	visibleLaneCount,
 	weekdayIndex,
 	weekdayLabel,
 } from "./grid";
@@ -97,6 +102,8 @@ export function renderCalendar(
 			? { top: oldBoard.scrollTop, left: oldBoard.scrollLeft }
 			: null;
 	const restoreScroll = Boolean(savedScroll) && !state.scrollToToday;
+
+	closeMoreMenu();
 
 	root.replaceChildren();
 	root.classList.add("byc-root");
@@ -257,6 +264,7 @@ function bindMenuDismiss(
 }
 
 export function teardownCalendarUi(root: HTMLElement): void {
+	closeMoreMenu();
 	const state = menuDismiss.get(root);
 	if (!state) return;
 	document.removeEventListener("click", state.onClick);
@@ -600,12 +608,14 @@ function renderColumnBoard(
 
 	for (const month of grid.months) {
 		const segments = segmentsForMonth(grid, month.month, events);
-		const lanes = maxLanes(segments);
+		const lanes = visibleLaneCount(segments);
+		const overflow = hasOverflowLanes(segments);
+		const laneCols = lanes + (overflow ? 1 : 0);
 		const col = mount(monthsRow, div("byc-column-month"));
 		mount(col, div("byc-column-month-label", month.label));
 		const body = mount(col, div("byc-column-days"));
 		body.style.setProperty("--byc-month-days", String(month.cells.length));
-		body.style.setProperty("--byc-lanes", String(lanes));
+		body.style.setProperty("--byc-lanes", String(laneCols));
 
 		for (const cell of month.cells) {
 			const cellEl = mount(body, div("byc-cell byc-column-cell"));
@@ -621,7 +631,24 @@ function renderColumnBoard(
 		}
 
 		for (const segment of segments) {
+			if (segment.lane >= MAX_VISIBLE_LANES) continue;
 			mountEventBar(body, segment, handlers, true);
+		}
+		if (overflow) {
+			for (const cell of month.cells) {
+				if (!cell.inMonth || !cell.date) continue;
+				const hidden = overflowCountAtCol(segments, cell.col);
+				if (hidden === 0) continue;
+				mountMoreChip(body, {
+					column: true,
+					col: cell.col,
+					lanes,
+					count: hidden,
+					date: cell.date,
+					events: eventsAtCol(segments, cell.col),
+					handlers,
+				});
+			}
 		}
 	}
 }
@@ -638,6 +665,7 @@ function renderRowBoard(
 	const wide = board.closest(".byc-root")?.classList.contains("is-wide") ?? false;
 	const headPx = wide ? 20 : 18;
 	const lanePx = wide ? 32 : grid.mode === "linear" ? 28 : 26;
+	const morePx = 14;
 	const padPx = 4;
 	const showToday = today.year === today.todayYear;
 
@@ -654,18 +682,23 @@ function renderRowBoard(
 
 	for (const month of grid.months) {
 		const segments = segmentsForMonth(grid, month.month, events);
-		const lanes = Math.max(1, maxLanes(segments));
-		const rowHeight = headPx + lanes * lanePx + padPx;
+		const lanes = visibleLaneCount(segments);
+		const overflow = hasOverflowLanes(segments);
+		const overflowRows = overflow ? 1 : 0;
+		const rowHeight = headPx + lanes * lanePx + overflowRows * morePx + padPx;
 		const isTodayMonth = showToday && month.month === today.todayMonth;
 
 		const row = mount(table, div("byc-month-row"));
-		row.style.setProperty("--byc-lanes", String(lanes));
+		row.style.setProperty("--byc-lanes", String(lanes + overflowRows));
 		const monthLabelEl = mount(row, div("byc-month-label", month.label));
 		if (isTodayMonth) monthLabelEl.classList.add("is-today");
 
 		const body = mount(row, div("byc-month-body"));
-		body.style.setProperty("--byc-lanes", String(lanes));
-		body.style.gridTemplateRows = `${headPx}px repeat(${lanes}, ${lanePx}px) ${padPx}px`;
+		body.style.setProperty("--byc-lanes", String(lanes + overflowRows));
+		const laneRows = overflow
+			? `${headPx}px repeat(${lanes}, ${lanePx}px) ${morePx}px ${padPx}px`
+			: `${headPx}px repeat(${lanes}, ${lanePx}px) ${padPx}px`;
+		body.style.gridTemplateRows = laneRows;
 		body.style.height = `${rowHeight}px`;
 		body.style.minHeight = `${rowHeight}px`;
 		body.style.maxHeight = `${rowHeight}px`;
@@ -698,7 +731,24 @@ function renderRowBoard(
 		}
 
 		for (const segment of segments) {
+			if (segment.lane >= MAX_VISIBLE_LANES) continue;
 			mountEventBar(body, segment, handlers, false);
+		}
+		if (overflow) {
+			for (const cell of month.cells) {
+				if (!cell.inMonth || !cell.date) continue;
+				const hidden = overflowCountAtCol(segments, cell.col);
+				if (hidden === 0) continue;
+				mountMoreChip(body, {
+					column: false,
+					col: cell.col,
+					lanes,
+					count: hidden,
+					date: cell.date,
+					events: eventsAtCol(segments, cell.col),
+					handlers,
+				});
+			}
 		}
 	}
 }
@@ -788,7 +838,9 @@ function renderMonthList(
 			mount(row, el("span", { cls: "byc-list-dow", text: dow }));
 
 			const eventsWrap = mount(row, div("byc-list-events"));
-			for (const event of dayEvents) {
+			const visible = dayEvents.slice(0, MAX_VISIBLE_LANES);
+			const hidden = dayEvents.slice(MAX_VISIBLE_LANES);
+			for (const event of visible) {
 				const label =
 					event.start === event.end
 						? event.title
@@ -812,6 +864,23 @@ function renderMonthList(
 					ev.stopPropagation();
 					hideEventHoverTip();
 					handlers.onEventClick(event, eventBtn, { x: ev.clientX, y: ev.clientY });
+				});
+			}
+			if (hidden.length > 0) {
+				const more = mount(
+					eventsWrap,
+					el("button", {
+						cls: "byc-more",
+						type: "button",
+						text: `+${hidden.length} more`,
+						attr: {
+							"aria-label": moreChipLabel(hidden.length, dayIso),
+						},
+					}),
+				) as HTMLButtonElement;
+				more.addEventListener("click", (ev) => {
+					ev.stopPropagation();
+					openMoreMenu(more, dayIso, dayEvents, handlers);
 				});
 			}
 		}
@@ -853,6 +922,131 @@ function mountEventBar(
 		handlers.onEventClick(segment.event, bar, { x: event.clientX, y: event.clientY });
 	});
 	bar.addEventListener("pointerdown", (event) => event.stopPropagation());
+}
+
+function moreChipLabel(count: number, date: string): string {
+	return `${count} more event${count === 1 ? "" : "s"} on ${formatShortDate(date)}`;
+}
+
+function mountMoreChip(
+	parent: HTMLElement,
+	opts: {
+		column: boolean;
+		col: number;
+		lanes: number;
+		count: number;
+		date: string;
+		events: CalendarEvent[];
+		handlers: CalendarUIHandlers;
+	},
+): void {
+	const chip = mount(
+		parent,
+		el("button", {
+			cls: opts.column ? "byc-more byc-column-more" : "byc-more",
+			type: "button",
+			text: `+${opts.count} more`,
+			attr: {
+				"aria-label": moreChipLabel(opts.count, opts.date),
+			},
+		}),
+	) as HTMLButtonElement;
+	if (opts.column) {
+		chip.style.gridRow = String(opts.col + 1);
+		chip.style.gridColumn = String(opts.lanes + 2);
+	} else {
+		chip.style.gridColumn = String(opts.col + 1);
+		chip.style.gridRow = String(opts.lanes + 2);
+	}
+	chip.addEventListener("pointerdown", (event) => event.stopPropagation());
+	chip.addEventListener("click", (event) => {
+		event.stopPropagation();
+		openMoreMenu(chip, opts.date, opts.events, opts.handlers);
+	});
+}
+
+let moreMenu: HTMLElement | null = null;
+let moreMenuOnDoc: ((event: MouseEvent) => void) | null = null;
+let moreMenuOnKey: ((event: KeyboardEvent) => void) | null = null;
+
+function closeMoreMenu(): void {
+	if (moreMenuOnDoc) {
+		document.removeEventListener("mousedown", moreMenuOnDoc);
+		moreMenuOnDoc = null;
+	}
+	if (moreMenuOnKey) {
+		document.removeEventListener("keydown", moreMenuOnKey);
+		moreMenuOnKey = null;
+	}
+	moreMenu?.remove();
+	moreMenu = null;
+}
+
+function openMoreMenu(
+	anchor: HTMLElement,
+	date: string,
+	events: CalendarEvent[],
+	handlers: CalendarUIHandlers,
+): void {
+	closeMoreMenu();
+	const menu = mount(
+		document.body,
+		el("div", {
+			cls: "byc-more-menu",
+			attr: { role: "dialog", "aria-label": formatShortDate(date) },
+		}),
+	);
+	moreMenu = menu;
+	mount(menu, div("byc-more-menu-title", formatShortDate(date)));
+	const list = mount(menu, div("byc-more-menu-list"));
+	for (const event of events) {
+		const row = mount(
+			list,
+			el("button", {
+				cls: "byc-more-menu-event",
+				type: "button",
+				text: event.title,
+			}),
+		) as HTMLButtonElement;
+		row.style.background = event.color;
+		row.style.color = contrastingTextColor(event.color);
+		row.addEventListener("click", (ev) => {
+			ev.stopPropagation();
+			closeMoreMenu();
+			handlers.onEventClick(event, row, { x: ev.clientX, y: ev.clientY });
+		});
+	}
+	const rect = anchor.getBoundingClientRect();
+	const pad = 8;
+	let left = rect.left;
+	let top = rect.bottom + 4;
+	menu.style.left = `${left}px`;
+	menu.style.top = `${top}px`;
+	window.requestAnimationFrame(() => {
+		const w = menu.offsetWidth;
+		const h = menu.offsetHeight;
+		left = Math.max(pad, Math.min(left, window.innerWidth - w - pad));
+		if (top + h > window.innerHeight - pad) {
+			top = Math.max(pad, rect.top - h - 4);
+		}
+		menu.style.left = `${left}px`;
+		menu.style.top = `${top}px`;
+	});
+	moreMenuOnDoc = (event: MouseEvent) => {
+		const target = event.target as Node | null;
+		if (menu.contains(target) || anchor.contains(target)) return;
+		closeMoreMenu();
+	};
+	moreMenuOnKey = (event: KeyboardEvent) => {
+		if (event.key !== "Escape") return;
+		event.preventDefault();
+		closeMoreMenu();
+		anchor.focus();
+	};
+	window.setTimeout(() => {
+		if (moreMenuOnDoc) document.addEventListener("mousedown", moreMenuOnDoc);
+		if (moreMenuOnKey) document.addEventListener("keydown", moreMenuOnKey);
+	}, 0);
 }
 
 let eventHoverTip: HTMLElement | null = null;
