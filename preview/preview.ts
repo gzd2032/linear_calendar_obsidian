@@ -242,11 +242,13 @@ const state = {
 	todayIso: "2026-09-07",
 	wideLayout: false,
 	scrollToToday: true,
+	narrow: false,
 };
 
 function paint(): void {
 	const scrollToToday = state.scrollToToday;
 	state.scrollToToday = false;
+	state.narrow = root.clientWidth > 0 && root.clientWidth <= 768;
 	renderCalendar(
 		root,
 		{ ...state, hiddenCalendars: new Set(state.hiddenCalendars), scrollToToday },
@@ -299,3 +301,12 @@ function paint(): void {
 }
 
 paint();
+{
+	let lastNarrow = state.narrow;
+	new ResizeObserver(() => {
+		const next = root.clientWidth > 0 && root.clientWidth <= 768;
+		if (next === lastNarrow) return;
+		lastNarrow = next;
+		paint();
+	}).observe(root);
+}
