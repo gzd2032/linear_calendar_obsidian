@@ -665,7 +665,7 @@ function renderRowBoard(
 	const wide = board.closest(".byc-root")?.classList.contains("is-wide") ?? false;
 	const headPx = wide ? 20 : 18;
 	const lanePx = wide ? 32 : grid.mode === "linear" ? 28 : 26;
-	const morePx = 18;
+	const morePx = 14;
 	const padPx = 4;
 	const showToday = today.year === today.todayYear;
 
