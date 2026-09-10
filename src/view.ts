@@ -1,23 +1,9 @@
-import { ItemView, Notice, requestUrl, type WorkspaceLeaf } from "obsidian";
+import { ItemView, Notice, type WorkspaceLeaf } from "obsidian";
 import { colorForName, endOnOrAfterStart, parseISODate } from "./grid";
-import {
-	countVevents,
-	GOOGLE_HOLIDAYS_NAME,
-	GOOGLE_US_HOLIDAYS_ICS_URL,
-	icsTextFromResponse,
-	isIcsCalendar,
-	normalizeIcsUrl,
-	parseIcs,
-} from "./ics";
+import { GOOGLE_HOLIDAYS_NAME } from "./ics";
 import type LinearYearCalendarPlugin from "./main";
 import { EventCreateModal } from "./modal";
-import {
-	createEventNote,
-	listEventNotes,
-	localCalendarsForPicker,
-	sanitizeCalendarName,
-	upsertIcsNotes,
-} from "./notes";
+import { createEventNote, listEventNotes, localCalendarsForPicker, sanitizeCalendarName } from "./notes";
 import { EventDetailPopover } from "./popover";
 import type { CalendarEvent, ViewMode } from "./types";
 import { defaultTodayIso, NARROW_MAX_WIDTH_PX, renderCalendar, teardownCalendarUi } from "./ui";
@@ -254,129 +240,8 @@ export class YearCalendarView extends ItemView {
 		).open();
 	}
 
-	async refreshIcs(): Promise<void> {
-		if (this.importing) return;
-		const sources = [
-			...this.plugin.settings.icsSources.filter((source) => source.enabled && source.url),
-			...(this.plugin.settings.googleHolidaysEnabled
-				? [
-						{
-							id: "google-us-holidays",
-							name: GOOGLE_HOLIDAYS_NAME,
-							url: GOOGLE_US_HOLIDAYS_ICS_URL,
-							color: this.plugin.settings.googleHolidaysColor,
-							enabled: true,
-						},
-					]
-				: []),
-		];
-		if (sources.length === 0) {
-			new Notice("Add an ICS URL in Linear Year Calendar settings.");
-			return;
-		}
-
-		this.importing = true;
-		this.render();
-
-		const allDayOnly = this.plugin.settings.importAllDayOnly;
-		let total = 0;
-		let trashed = 0;
-		const results: { name: string; ok: boolean; detail: string }[] = [];
-
-		try {
-			for (const source of sources) {
-				try {
-					const res = await requestUrl({
-						url: normalizeIcsUrl(source.url),
-						headers: { Accept: "text/calendar, text/plain;q=0.9, */*;q=0.8" },
-					});
-					const text = icsTextFromResponse(res);
-					if (!isIcsCalendar(text)) {
-						results.push({ name: source.name, ok: false, detail: "URL is not an iCal feed" });
-						continue;
-					}
-					const vevents = countVevents(text);
-					const includingTimed = parseIcs(
-						text,
-						source.name,
-						source.color,
-						this.year,
-						this.year,
-						false,
-					);
-					const parsed = allDayOnly
-						? parseIcs(text, source.name, source.color, this.year, this.year, true)
-						: includingTimed;
-					if (parsed.length === 0) {
-						if (allDayOnly && includingTimed.length > 0) {
-							results.push({
-								name: source.name,
-								ok: false,
-								detail: `${includingTimed.length} timed events skipped — turn off All-day events only`,
-							});
-						} else if (vevents === 0) {
-							results.push({ name: source.name, ok: false, detail: "feed has no events" });
-						} else {
-							results.push({
-								name: source.name,
-								ok: false,
-								detail: `${vevents} in feed, none in ${this.year}`,
-							});
-						}
-					}
-					const result = await upsertIcsNotes(
-						this.app,
-						this.plugin.settings.eventsFolder,
-						source.name,
-						source.color,
-						parsed,
-						this.year,
-					);
-					total += result.written;
-					trashed += result.trashed;
-					if (parsed.length > 0 || results.every((r) => r.name !== source.name)) {
-						results.push({
-							name: source.name,
-							ok: true,
-							detail: `${result.written} notes${result.trashed ? `, ${result.trashed} removed` : ""}`,
-						});
-					}
-				} catch (error) {
-					console.error(error);
-					const detail =
-						error instanceof Error && error.message ? error.message : "Check the ICS URL.";
-					results.push({ name: source.name, ok: false, detail });
-				}
-			}
-
-			const extra = trashed > 0 ? `, removed ${trashed} stale` : "";
-			const summary = `Imported ${total} event notes for ${this.year}${extra}.`;
-			const failures = results.filter((r) => !r.ok);
-			if (failures.length > 0) {
-				showMultilineNotice(
-					[summary, ...failures.map((f) => `${f.name}: ${f.detail}`)],
-					10000,
-				);
-			} else {
-				new Notice(summary);
-			}
-
-			this.plugin.settings.lastIcsRefreshAt = new Date().toISOString();
-			this.plugin.settings.icsRefreshResults = results;
-			await this.plugin.saveSettings();
-		} finally {
-			this.importing = false;
-			this.render();
-		}
-	}
-}
-
-function showMultilineNotice(lines: string[], timeout = 8000): void {
-	const notice = new Notice("", timeout);
-	const host = notice.messageEl;
-	host.empty();
-	for (const line of lines) {
-		host.createDiv({ text: line });
+	async refreshIcs(sourceId?: string): Promise<void> {
+		await this.plugin.refreshIcs(sourceId);
 	}
 }
 

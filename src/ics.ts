@@ -37,6 +37,21 @@ export function normalizeIcsUrl(url: string): string {
 	return url.trim().replace(/^webcal:\/\//i, "https://");
 }
 
+/** Inline settings hint; empty URLs are allowed until the user pastes one. */
+export function icsUrlIssue(url: string): string | null {
+	const normalized = normalizeIcsUrl(url);
+	if (!normalized) return null;
+	try {
+		const parsed = new URL(normalized);
+		if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+			return "Use an https:// or webcal:// calendar URL.";
+		}
+		return null;
+	} catch {
+		return "That doesn’t look like a valid calendar URL.";
+	}
+}
+
 export function isIcsCalendar(text: string): boolean {
 	return /BEGIN:VCALENDAR/i.test(text);
 }
