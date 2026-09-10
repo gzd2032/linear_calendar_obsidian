@@ -1,6 +1,7 @@
-import { Modal, Setting } from "obsidian";
+import { Modal, Setting, type ButtonComponent } from "obsidian";
 import { sanitizeCalendarName } from "./calendar-paths";
-import { endOnOrAfterStart } from "./dates";
+import { endOnOrAfterStart, parseISODate } from "./dates";
+import { eventDayCount } from "./format";
 import { PASTEL_COLORS } from "./types";
 
 export interface EventDraft {
@@ -15,14 +16,15 @@ export interface EventDraft {
 export class EventCreateModal extends Modal {
 	private draft: EventDraft;
 	private calendars: string[];
-	private onSubmit: (draft: EventDraft) => void;
+	private onSubmit: (draft: EventDraft) => void | Promise<void>;
 	private heading: string;
+	private busy = false;
 
 	constructor(
 		app: ConstructorParameters<typeof Modal>[0],
 		draft: EventDraft,
 		calendars: string[],
-		onSubmit: (draft: EventDraft) => void,
+		onSubmit: (draft: EventDraft) => void | Promise<void>,
 		heading = "New event",
 	) {
 		super(app);
@@ -36,41 +38,69 @@ export class EventCreateModal extends Modal {
 		const { contentEl } = this;
 		contentEl.addClass("byc-modal");
 		contentEl.createEl("h2", { text: this.heading });
+		const formError = contentEl.createDiv({ cls: "byc-modal-error" });
+		formError.hidden = true;
 
-		new Setting(contentEl).setName("Title").addText((text) => {
+		const setFormError = (message: string | null): void => {
+			formError.hidden = !message;
+			formError.setText(message ?? "");
+		};
+		const setFieldError = (setting: Setting, message: string | null): void => {
+			setting.setDesc(message ?? "");
+			setting.settingEl.classList.toggle("is-invalid", Boolean(message));
+		};
+
+		const titleSetting = new Setting(contentEl).setName("Title").addText((text) => {
 			text.setValue(this.draft.title).onChange((value) => {
 				this.draft.title = value;
+				if (value.trim()) setFieldError(titleSetting, null);
 			});
+			text.inputEl.setAttribute("aria-label", "Title");
 			text.inputEl.focus();
 		});
 
-		const dates = new Setting(contentEl).setName("Dates");
-		dates.controlEl.addClass("byc-date-row");
 		let endInput: HTMLInputElement | null = null;
 		const syncEndMin = (): void => {
 			if (!endInput) return;
 			endInput.min = this.draft.start;
 		};
-		dates.addText((text) => {
+		const startSetting = new Setting(contentEl).setName("Start");
+		const endSetting = new Setting(contentEl).setName("End");
+		const refreshDuration = (): void => {
+			if (endSetting.settingEl.classList.contains("is-invalid")) return;
+			if (!parseISODate(this.draft.start) || !parseISODate(this.draft.end)) {
+				endSetting.setDesc("");
+				return;
+			}
+			const days = eventDayCount(this.draft.start, this.draft.end);
+			endSetting.setDesc(days === 1 ? "1 day" : `${days} days`);
+		};
+		startSetting.addText((text) => {
 			text.inputEl.type = "date";
 			text.setValue(this.draft.start).onChange((value) => {
 				this.draft.start = value;
 				this.draft.end = endOnOrAfterStart(this.draft.start, this.draft.end);
 				if (endInput) endInput.value = this.draft.end;
 				syncEndMin();
+				setFieldError(startSetting, null);
+				setFieldError(endSetting, null);
+				refreshDuration();
 			});
 			text.inputEl.setAttribute("aria-label", "Start date");
 		});
-		dates.addText((text) => {
+		endSetting.addText((text) => {
 			endInput = text.inputEl;
 			text.inputEl.type = "date";
 			text.setValue(this.draft.end).onChange((value) => {
 				this.draft.end = endOnOrAfterStart(this.draft.start, value);
 				if (endInput) endInput.value = this.draft.end;
+				setFieldError(endSetting, null);
+				refreshDuration();
 			});
 			text.inputEl.setAttribute("aria-label", "End date");
 		});
 		syncEndMin();
+		refreshDuration();
 
 		const OTHER = "__other__";
 		const calendarNames = [
@@ -173,22 +203,101 @@ export class EventCreateModal extends Modal {
 			selectColor(0, false);
 		}
 
-		new Setting(contentEl).addButton((btn) => {
-			btn.setButtonText(this.heading === "Edit event" ? "Save" : "Create")
-				.setCta()
-				.onClick(() => {
-					if (!this.draft.title.trim()) this.draft.title = "Untitled";
-					this.draft.end = endOnOrAfterStart(this.draft.start, this.draft.end);
-					this.draft.calendar = sanitizeCalendarName(
-						this.draft.calendar.trim() || calendarNames[0] || "Personal",
-					);
-					this.onSubmit(this.draft);
+		const isEdit = this.heading === "Edit event";
+		const submitLabel = isEdit ? "Save" : "Create";
+		const busyLabel = isEdit ? "Saving…" : "Creating…";
+		let cancelBtn: ButtonComponent | null = null;
+		let submitBtn: ButtonComponent | null = null;
+
+		const setBusy = (busy: boolean): void => {
+			this.busy = busy;
+			contentEl.classList.toggle("is-busy", busy);
+			contentEl.setAttribute("aria-busy", busy ? "true" : "false");
+			cancelBtn?.setDisabled(busy);
+			submitBtn?.setDisabled(busy);
+			submitBtn?.setButtonText(busy ? busyLabel : submitLabel);
+		};
+
+		new Setting(contentEl)
+			.setClass("byc-modal-actions")
+			.addButton((btn) => {
+				cancelBtn = btn;
+				btn.setButtonText("Cancel").onClick(() => {
+					if (this.busy) return;
 					this.close();
 				});
-		});
+			})
+			.addButton((btn) => {
+				submitBtn = btn;
+				btn.setButtonText(submitLabel)
+					.setCta()
+					.onClick(() => {
+						void this.submit({
+							titleSetting,
+							startSetting,
+							endSetting,
+							calendarNames,
+							setFieldError,
+							setFormError,
+							refreshDuration,
+							setBusy,
+						});
+					});
+			});
 	}
 
 	onClose(): void {
 		this.contentEl.empty();
+	}
+
+	private async submit(ctx: {
+		titleSetting: Setting;
+		startSetting: Setting;
+		endSetting: Setting;
+		calendarNames: string[];
+		setFieldError: (setting: Setting, message: string | null) => void;
+		setFormError: (message: string | null) => void;
+		refreshDuration: () => void;
+		setBusy: (busy: boolean) => void;
+	}): Promise<void> {
+		if (this.busy) return;
+		ctx.setFormError(null);
+		ctx.setFieldError(ctx.titleSetting, null);
+		ctx.setFieldError(ctx.startSetting, null);
+		ctx.setFieldError(ctx.endSetting, null);
+
+		let invalid = false;
+		if (!this.draft.title.trim()) {
+			ctx.setFieldError(ctx.titleSetting, "Enter a title.");
+			invalid = true;
+		}
+		if (!parseISODate(this.draft.start)) {
+			ctx.setFieldError(ctx.startSetting, "Enter a valid start date.");
+			invalid = true;
+		}
+		if (!parseISODate(this.draft.end)) {
+			ctx.setFieldError(ctx.endSetting, "Enter a valid end date.");
+			invalid = true;
+		}
+		if (invalid) {
+			ctx.refreshDuration();
+			return;
+		}
+
+		this.draft.end = endOnOrAfterStart(this.draft.start, this.draft.end);
+		this.draft.calendar = sanitizeCalendarName(
+			this.draft.calendar.trim() || ctx.calendarNames[0] || "Personal",
+		);
+		ctx.refreshDuration();
+
+		ctx.setBusy(true);
+		try {
+			await this.onSubmit(this.draft);
+			this.close();
+		} catch (error) {
+			console.error(error);
+			ctx.setFormError(error instanceof Error && error.message ? error.message : "Could not save event.");
+			ctx.setBusy(false);
+		}
 	}
 }

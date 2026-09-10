@@ -1087,20 +1087,28 @@ button.byc-event {
 	border: none;
 }
 
-.byc-modal .byc-date-row {
-	display: flex;
-	gap: 8px;
-	align-items: center;
-	flex-wrap: wrap;
+.byc-modal-error {
+	color: var(--text-error, var(--byc-danger));
+	font-size: 13px;
+	line-height: 1.4;
+	margin: 0 0 8px;
 }
 
-.byc-modal .byc-date-row input {
-	min-width: 0;
-	flex: 1;
+.byc-modal .setting-item.is-invalid .setting-item-description {
+	color: var(--text-error, var(--byc-danger));
 }
 
-.byc-modal .byc-date-row input[type="date"] {
+.byc-modal .setting-item:not(.is-invalid) .setting-item-description:empty {
+	display: none;
+}
+
+.byc-modal input[type="date"] {
 	min-width: 9.5em;
+}
+
+.byc-modal-actions .setting-item-control {
+	justify-content: flex-end;
+	gap: 8px;
 }
 
 .byc-modal .byc-description-input {
