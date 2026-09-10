@@ -20,7 +20,7 @@ import {
 } from "./notes";
 import { EventDetailPopover } from "./popover";
 import type { CalendarEvent, ViewMode } from "./types";
-import { defaultTodayIso, renderCalendar, teardownCalendarUi } from "./ui";
+import { defaultTodayIso, NARROW_MAX_WIDTH_PX, renderCalendar, teardownCalendarUi } from "./ui";
 
 export const VIEW_TYPE = "linear-year-calendar";
 
@@ -33,6 +33,8 @@ export class YearCalendarView extends ItemView {
 	private popover: EventDetailPopover | null = null;
 	private scrollToToday = true;
 	private closed = false;
+	private narrow = false;
+	private resizeObserver: ResizeObserver | null = null;
 
 	constructor(leaf: WorkspaceLeaf, plugin: LinearYearCalendarPlugin) {
 		super(leaf);
@@ -66,6 +68,21 @@ export class YearCalendarView extends ItemView {
 				),
 			() => this.plugin.settings.eventsFolder,
 		);
+		this.narrow =
+			this.contentEl.clientWidth > 0 && this.contentEl.clientWidth <= NARROW_MAX_WIDTH_PX;
+		const syncNarrow = (): void => {
+			const next =
+				this.contentEl.clientWidth > 0 && this.contentEl.clientWidth <= NARROW_MAX_WIDTH_PX;
+			if (next === this.narrow) return;
+			this.narrow = next;
+			if (!this.closed) this.render();
+		};
+		this.resizeObserver = new ResizeObserver(() => syncNarrow());
+		this.resizeObserver.observe(this.contentEl);
+		this.register(() => {
+			this.resizeObserver?.disconnect();
+			this.resizeObserver = null;
+		});
 		this.registerEvent(this.app.vault.on("create", () => this.scheduleRender()));
 		this.registerEvent(this.app.vault.on("modify", () => this.scheduleRender()));
 		this.registerEvent(this.app.vault.on("delete", () => this.scheduleRender()));
@@ -117,6 +134,7 @@ export class YearCalendarView extends ItemView {
 				todayIso: this.todayIso,
 				wideLayout: this.plugin.settings.wideLayout,
 				scrollToToday,
+				narrow: this.narrow,
 			},
 			{
 				onYearChange: (year) => {
@@ -180,7 +198,7 @@ export class YearCalendarView extends ItemView {
 		if (!openEventId || !this.popover) return;
 		const event = events.find((item) => item.id === openEventId);
 		const bar = this.contentEl.querySelector<HTMLElement>(
-			`.byc-event[data-event-id="${CSS.escape(openEventId)}"]`,
+			`.byc-event[data-event-id="${CSS.escape(openEventId)}"], .byc-list-event[data-event-id="${CSS.escape(openEventId)}"]`,
 		);
 		if (!event || !bar) {
 			this.popover.close();

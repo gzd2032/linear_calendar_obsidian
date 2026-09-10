@@ -294,6 +294,129 @@ button.byc-mode-option:focus-visible {
 	position: relative;
 }
 
+.byc-month-list {
+	display: flex;
+	flex-direction: column;
+	gap: 18px;
+	padding: 4px 4px 24px;
+	max-width: 520px;
+}
+
+.byc-list-month-title {
+	margin: 0 0 8px;
+	font-size: 18px;
+	font-weight: 700;
+	letter-spacing: -0.02em;
+	color: var(--byc-text);
+}
+
+.byc-list-month-title.is-today {
+	color: var(--byc-today-text);
+}
+
+.byc-list-row {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	width: 100%;
+	margin: 0 0 4px;
+	padding: 8px 10px;
+	border: 1px solid transparent;
+	border-radius: 10px;
+	background: var(--byc-surface);
+	color: var(--byc-text);
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.byc-list-row:hover,
+.byc-list-empty:hover {
+	background: var(--byc-hover);
+}
+
+.byc-list-row.is-today {
+	border-color: color-mix(in srgb, var(--byc-today) 40%, transparent);
+	background: var(--byc-today-wash);
+}
+
+.byc-list-row:focus-visible,
+.byc-list-empty:focus-visible,
+.byc-list-event:focus-visible {
+	outline: 2px solid var(--byc-focus);
+	outline-offset: 2px;
+}
+
+.byc-list-day {
+	flex: 0 0 1.6em;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+}
+
+.byc-list-dow {
+	flex: 0 0 1.6em;
+	font-size: 11px;
+	text-transform: uppercase;
+	color: var(--byc-muted);
+	padding-top: 2px;
+}
+
+.byc-list-events {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.byc-list-event {
+	display: block;
+	width: 100%;
+	border: none;
+	border-radius: 6px;
+	padding: 4px 8px;
+	font: inherit;
+	font-size: 13px;
+	font-weight: 600;
+	text-align: left;
+	cursor: pointer;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.byc-list-empty {
+	display: block;
+	width: 100%;
+	margin: 0;
+	padding: 10px 12px;
+	border: 1px dashed var(--byc-line);
+	border-radius: 10px;
+	background: transparent;
+	color: var(--byc-muted);
+	font: inherit;
+	font-size: 13px;
+	text-align: left;
+	cursor: pointer;
+}
+
+.byc-root.is-narrow .byc-table,
+.byc-root.is-narrow.is-wide .byc-table {
+	min-width: 0;
+}
+
+.byc-root.is-narrow .byc-column-wrap {
+	min-width: 0;
+}
+
+.byc-root.is-narrow .byc-year {
+	font-size: 22px;
+}
+
+.byc-root.is-narrow .byc-search-input {
+	width: min(160px, 40vw);
+}
+
 .byc-empty {
 	display: flex;
 	flex-direction: column;

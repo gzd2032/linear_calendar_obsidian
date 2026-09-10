@@ -3,12 +3,16 @@ import { div, el, mount, setCssProps } from "./dom";
 import { contrastingTextColor } from "./format";
 import {
 	buildYearGrid,
+	daysInMonth,
 	formatEventRange,
 	formatEventTooltip,
 	formatISODate,
 	maxLanes,
+	monthLabel,
+	pad2,
 	parseISODate,
 	segmentsForMonth,
+	weekdayIndex,
 	weekdayLabel,
 } from "./grid";
 import { partitionCalendars } from "./calendar-paths";
@@ -27,6 +31,9 @@ import {
 	viewLabel,
 } from "./ui-helpers";
 
+/** Pane width at or below this uses the compact month-list layout. */
+export const NARROW_MAX_WIDTH_PX = 768;
+
 export interface CalendarUIState {
 	year: number;
 	mode: ViewMode;
@@ -40,6 +47,8 @@ export interface CalendarUIState {
 	wideLayout: boolean;
 	/** When true, scroll today’s cell into view after paint. */
 	scrollToToday?: boolean;
+	/** When true (pane ≤ {@link NARROW_MAX_WIDTH_PX}), render compact month-list. */
+	narrow?: boolean;
 }
 
 export interface CalendarUIHandlers {
@@ -57,7 +66,7 @@ export interface CalendarUIHandlers {
 
 const boardScrollMemory = new WeakMap<
 	HTMLElement,
-	{ year: number; mode: ViewMode; scrollTop: number; scrollLeft: number }
+	{ year: number; layout: string; scrollTop: number; scrollLeft: number }
 >();
 
 export function renderCalendar(
@@ -66,10 +75,12 @@ export function renderCalendar(
 	handlers: CalendarUIHandlers,
 ): void {
 	const restoreSearchFocus = document.activeElement?.classList.contains("byc-search-input");
+	const narrow = Boolean(state.narrow);
+	const layoutKey = narrow ? "list" : state.mode;
 	const previous = boardScrollMemory.get(root);
 	const oldBoard = root.querySelector<HTMLElement>(".byc-board");
 	const savedScroll =
-		oldBoard && previous && previous.year === state.year && previous.mode === state.mode
+		oldBoard && previous && previous.year === state.year && previous.layout === layoutKey
 			? { top: oldBoard.scrollTop, left: oldBoard.scrollLeft }
 			: null;
 	const restoreScroll = Boolean(savedScroll) && !state.scrollToToday;
@@ -77,6 +88,7 @@ export function renderCalendar(
 	root.replaceChildren();
 	root.classList.add("byc-root");
 	root.classList.toggle("is-wide", state.wideLayout);
+	root.classList.toggle("is-narrow", narrow);
 
 	const query = state.search.trim().toLowerCase();
 	const hiddenCount = state.hiddenCalendars.size;
@@ -87,7 +99,6 @@ export function renderCalendar(
 		state.icsCalendarNames,
 	);
 	const calendars = [...local, ...google];
-	const grid = buildYearGrid(state.year, state.mode, state.weekStartsOn, state.todayIso);
 	const todayYear = Number(state.todayIso.slice(0, 4));
 	const todayDate = parseISODate(state.todayIso);
 
@@ -108,23 +119,28 @@ export function renderCalendar(
 		});
 	}
 
-	if (grid.mode === "column" || grid.mode === "col-stack") {
-		renderColumnBoard(board, grid, visibleEvents, handlers);
+	if (narrow) {
+		renderMonthList(board, state.year, visibleEvents, state.todayIso, handlers);
 	} else {
-		renderRowBoard(
-			board,
-			grid,
-			visibleEvents,
-			{
-				todayDay: todayDate?.getDate() ?? -1,
-				todayMonth: todayDate?.getMonth() ?? -1,
-				todayWeekday: todayDate?.getDay() ?? -1,
-				todayYear,
-				year: state.year,
-				weekStartsOn: state.weekStartsOn,
-			},
-			handlers,
-		);
+		const grid = buildYearGrid(state.year, state.mode, state.weekStartsOn, state.todayIso);
+		if (grid.mode === "column" || grid.mode === "col-stack") {
+			renderColumnBoard(board, grid, visibleEvents, handlers);
+		} else {
+			renderRowBoard(
+				board,
+				grid,
+				visibleEvents,
+				{
+					todayDay: todayDate?.getDate() ?? -1,
+					todayMonth: todayDate?.getMonth() ?? -1,
+					todayWeekday: todayDate?.getDay() ?? -1,
+					todayYear,
+					year: state.year,
+					weekStartsOn: state.weekStartsOn,
+				},
+				handlers,
+			);
+		}
 	}
 
 	if (restoreScroll && savedScroll) {
@@ -136,15 +152,16 @@ export function renderCalendar(
 		});
 	} else if (state.scrollToToday && state.year === todayYear) {
 		window.requestAnimationFrame(() => {
-			root
-				.querySelector<HTMLElement>(".byc-cell.is-today")
-				?.scrollIntoView({ block: "center", inline: "center", behavior: "smooth" });
+			const target = narrow
+				? root.querySelector<HTMLElement>(".byc-list-day.is-today")
+				: root.querySelector<HTMLElement>(".byc-cell.is-today");
+			target?.scrollIntoView({ block: "center", inline: "center", behavior: "smooth" });
 		});
 	}
 
 	boardScrollMemory.set(root, {
 		year: state.year,
-		mode: state.mode,
+		layout: layoutKey,
 		scrollTop: board.scrollTop,
 		scrollLeft: board.scrollLeft,
 	});
@@ -551,6 +568,120 @@ function renderRowBoard(
 
 		for (const segment of segments) {
 			mountEventBar(body, segment, handlers, false);
+		}
+	}
+}
+
+function eventsOverlappingMonth(
+	events: CalendarEvent[],
+	year: number,
+	month: number,
+): CalendarEvent[] {
+	const monthStart = `${year}-${pad2(month + 1)}-01`;
+	const monthEnd = `${year}-${pad2(month + 1)}-${pad2(daysInMonth(year, month))}`;
+	return events
+		.filter((event) => event.start <= monthEnd && event.end >= monthStart)
+		.sort((a, b) => a.start.localeCompare(b.start) || a.title.localeCompare(b.title));
+}
+
+function listDateLabel(event: CalendarEvent, year: number, month: number): string {
+	const monthStart = `${year}-${pad2(month + 1)}-01`;
+	const monthEnd = `${year}-${pad2(month + 1)}-${pad2(daysInMonth(year, month))}`;
+	const start = event.start < monthStart ? monthStart : event.start;
+	const end = event.end > monthEnd ? monthEnd : event.end;
+	const startDay = Number(start.slice(8, 10));
+	const endDay = Number(end.slice(8, 10));
+	if (start === end) return String(startDay);
+	return `${startDay}–${endDay}`;
+}
+
+function createIsoForEventInMonth(event: CalendarEvent, year: number, month: number): string {
+	const monthStart = `${year}-${pad2(month + 1)}-01`;
+	const monthEnd = `${year}-${pad2(month + 1)}-${pad2(daysInMonth(year, month))}`;
+	if (event.start >= monthStart && event.start <= monthEnd) return event.start;
+	return monthStart;
+}
+
+/** Compact year list for narrow panes: month title + day rows with events. */
+function renderMonthList(
+	board: HTMLElement,
+	year: number,
+	events: CalendarEvent[],
+	todayIso: string,
+	handlers: CalendarUIHandlers,
+): void {
+	const list = mount(board, div("byc-month-list"));
+	for (let month = 0; month < 12; month++) {
+		const section = mount(list, el("section", { cls: "byc-list-month" }));
+		const heading = mount(
+			section,
+			el("h2", { cls: "byc-list-month-title", text: monthLabel(month) }),
+		);
+		if (todayIso.startsWith(`${year}-${pad2(month + 1)}`)) {
+			heading.classList.add("is-today");
+		}
+
+		const monthEvents = eventsOverlappingMonth(events, year, month);
+		if (monthEvents.length === 0) {
+			const empty = mount(
+				section,
+				el("button", {
+					cls: "byc-list-row byc-list-empty",
+					type: "button",
+					text: "Tap to add an event",
+				}),
+			) as HTMLButtonElement;
+			const dayIso = `${year}-${pad2(month + 1)}-01`;
+			empty.addEventListener("click", () => handlers.onRangeSelect(dayIso, dayIso));
+			continue;
+		}
+
+		const byDay = new Map<string, CalendarEvent[]>();
+		for (const event of monthEvents) {
+			const dayIso = createIsoForEventInMonth(event, year, month);
+			const bucket = byDay.get(dayIso) ?? [];
+			bucket.push(event);
+			byDay.set(dayIso, bucket);
+		}
+
+		for (const dayIso of [...byDay.keys()].sort()) {
+			const dayEvents = byDay.get(dayIso) ?? [];
+			const row = mount(section, div("byc-list-row"));
+			row.dataset.date = dayIso;
+			if (dayIso === todayIso) row.classList.add("is-today");
+			row.addEventListener("click", () => handlers.onRangeSelect(dayIso, dayIso));
+
+			const dayNum = Number(dayIso.slice(8, 10));
+			const dow = weekdayLabel(weekdayIndex(year, month, dayNum));
+			mount(row, el("span", { cls: "byc-list-day", text: `${dayNum}` }));
+			mount(row, el("span", { cls: "byc-list-dow", text: dow }));
+
+			const eventsWrap = mount(row, div("byc-list-events"));
+			for (const event of dayEvents) {
+				const label =
+					event.start === event.end
+						? event.title
+						: `${event.title} (${listDateLabel(event, year, month)})`;
+				const eventBtn = mount(
+					eventsWrap,
+					el("button", {
+						cls: "byc-list-event",
+						type: "button",
+						text: label,
+						title: formatEventTooltip(event),
+						attr: {
+							"aria-label": `${event.title}, ${formatEventRange(event.start, event.end)}`,
+							"data-event-id": event.id,
+						},
+					}),
+				) as HTMLButtonElement;
+				eventBtn.style.background = event.color;
+				eventBtn.style.color = contrastingTextColor(event.color);
+				eventBtn.addEventListener("click", (ev) => {
+					ev.stopPropagation();
+					handlers.onEventClick(event, eventBtn);
+				});
+			}
 		}
 	}
 }
