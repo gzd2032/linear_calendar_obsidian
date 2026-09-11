@@ -1,7 +1,7 @@
 {
 	"id": "linear-year-calendar",
 	"name": "Linear Year Calendar",
-	"version": "1.0.3",
+	"version": "1.0.4",
 	"minAppVersion": "1.13.0",
 	"description": "A linear year planner: see all 12 months at once, create events from notes, and import Google Calendar via ICS.",
 	"author": "Gordon",
