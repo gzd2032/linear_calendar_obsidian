@@ -5,7 +5,8 @@
 	--byc-bg: var(--background-primary);
 	--byc-header: var(--background-secondary);
 	--byc-cell: var(--background-primary-alt, var(--background-primary));
-	--byc-weekend: var(--background-secondary-alt, var(--background-secondary));
+	/* secondary-alt often matches primary-alt; keep weekends distinct with a light accent wash. */
+	--byc-weekend: color-mix(in srgb, var(--interactive-accent) 8%, var(--byc-cell));
 	--byc-line: var(--background-modifier-border);
 	--byc-focus: var(--background-modifier-border-focus);
 	--byc-text: var(--text-normal);
@@ -1193,6 +1194,7 @@ button.byc-more {
 
 .byc-column-gutter-label.is-weekend {
 	color: var(--byc-text);
+	background: var(--byc-weekend);
 }
 
 .byc-modal .setting-item {
