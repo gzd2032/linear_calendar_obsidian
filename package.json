@@ -1,6 +1,6 @@
 {
 	"name": "linear-year-calendar",
-	"version": "1.0.3",
+	"version": "1.0.4",
 	"description": "Linear year planner for Obsidian",
 	"main": "main.js",
 	"type": "module",
